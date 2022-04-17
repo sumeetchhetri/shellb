@@ -1,0 +1,10 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+	name = "includes",
+	hdrs = glob(["include/**/*.h"]) + glob(["include/**/*.hh"]) + glob(["include/**/*.hpp"]),
+	includes = [
+      "include", "include/libmongoc-1.0", "include/libbson-1.0"
+    ],
+	visibility = ["//visibility:public"]
+)

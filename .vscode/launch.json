@@ -10,7 +10,7 @@
 			"request": "launch",
 			"name": "Bash-Debug (simplest configuration)",
 			"program": "${file}",
-			"args": ["test.sh"]
+			"args": ["ffead-cpp", ""]
 		}
 	]
 }

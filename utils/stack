@@ -1,3 +1,5 @@
+#Sourced from https://gist.github.com/bmc/1323553/712a355e093f4c0f7fb05290373620e4e58f15fd
+
 # A stack, using bash arrays.
 # ---------------------------------------------------------------------------
 

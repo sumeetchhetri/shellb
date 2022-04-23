@@ -1,182 +1,302 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+#___@@KV_BASH@___
+#___@@COMMANDS@___
+
+# First find out the current directory  -- from a stackoverflow thread
 myreadlink() { [ ! -h "$1" ] && echo "$1" || (local link="$(expr "$(command ls -ld -- "$1")" : '.*-> \(.*\)$')"; cd $(dirname $1); myreadlink "$link" | sed "s|^\([^/].*\)\$|$(dirname $1)/\1|"); }
 whereis() { echo $1 | sed "s|^\([^/].*/.*\)|$(pwd)/\1|;s|^\([^/]*\)$|$(which -- $1)|;s|^$|$1|"; } 
 whereis_realpath() { local SCRIPT_PATH=$(whereis $1); myreadlink ${SCRIPT_PATH} | sed "s|^\([^/].*\)\$|$(dirname ${SCRIPT_PATH})/\1|"; } 
 DIR=$(dirname $(whereis_realpath "$0"))
-echo "home dir is... $DIR"
+echo "Home directory is... $DIR"
 
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/utils/kv-bash"
-. "$DIR/commands/_.sh"
-. "$DIR/builds/_.sh"
-. "$DIR/checks/_.sh"
 
+if [[ "$(type -t kv_echo_err)" == 'function' ]]; then
+	:
+else
+	. "$DIR/utils/kv-bash"
+fi
+if [[ "$(type -t sanitize_var)" == 'function' ]]; then
+	:
+else
+	. "$DIR/utils/commands.sh"
+fi
+
+# Trap SIGKILL signal -- execute stop function
 trap "stop" 2
 
+# Variable to define/control the target platform/language c_cpp being the default
+BUILD_PLATFORM=c_cpp
+
+# Variable to define/control the target build system (embedded being the default)
 BUILD_SYS=emb
 
-LPATHS=
-LPATHSQ=
-LIBS=
-INCS=
+# The list of source directories to exclude from the build
 EXC_SRC=
-CFLAGS=
-LFLAGS=
-SHLIB_EXT=".so"
 
-DEFS_FILE=$DIR/.shellb/.AppDefs.h
+# The list of source files to exclude from the build
+EXC_FLS=
 
+# The list of allowed configuration paramaters for the build
+ALLOWED_PARAMS=
+
+# The actual parameters passed to the build at runtime
+PARAMS=
+
+# The output build directory path
 SB_OUTDIR=
 
+# The output install directory path
+SB_INSDIR=
+
+# The OS type
 OS="$OSTYPE"
+
+# What level of logging do we need
 LOG_MODE=2
+
+# The number of identified #cpu's found in the machine
 NUM_CPU=1
 
+# The target platform or OS name (linux|darwin|bsd|cygwin|mingw|android..), aliases follow
+OS_NAME=
 OS_LINUX=
 OS_DARWIN=
 OS_BSD=
 OS_CYGWIN=
 OS_MINGW=
+
+# Do we continue execution or stop in case of a signal received
 IS_RUN=1
 
+# Update PATH and LD_LIBRARY_PATH to include /usr/local as well
+export PATH=/usr/local/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+# Directory to store kv-hash files -- key-value pairs
+KV_USER_DIR=".shellb/.kv-bash"
+
+# Set the build output directory, if not found create it
 function set_out() {
 	if [ "$1" = "" ]
 	then
-		echo "invalid output dir $1"
+		echo "Build output directory is mandatory..."
 		exit 1;
-	fi
-	if [ -d "$1" ]
-	then
-		mkdir -p $1
 	fi
 	if [ "$SB_OUTDIR" = "" ]; then
 		SB_OUTDIR=$1
-	#	mkdir -p $1
+	fi
+	if [ -d "$SB_OUTDIR" ]
+	then
+		mkdir -p $SB_OUTDIR
+		mkdir -p $SB_OUTDIR/.bin
 	fi
 }
 
-function set_src() {
+# Set the build install directory name, if it does not exist create it
+function set_install() {
+	if [ "$SB_OUTDIR" = "" ]; then echo "Please set output directory first..." && exit 1; fi
 	if [ "$1" = "" ]
 	then
-		echo "invalid src dir $1"
-		exit 1;
+		echo "Blank install dir specified, any install commands won't work.."
+		#exit 1;
+	else
+		kv_validate_key "$1" || {
+			echo "Invalid install dir $1, should be a valid directory name"
+			exit 1;
+		}
+		SB_INSDIR="$1"
+		if [ -d "$SB_OUTDIR/$SB_INSDIR" ]; then rm -rf $SB_OUTDIR/$SB_INSDIR; fi
+		mkdir $SB_OUTDIR/$SB_INSDIR || true
 	fi
+}
 
-	src_=
-	src_out_=
-	src_deps_=
+# Build the provided source files and generate requested artifacts
+function set_src_files() {
+	if [ "$SB_OUTDIR" = "" ]; then echo "Please set output directory first..." && exit 1; fi
+	srces_="$1"
+	src_out_="$2"
+	src_deps_="$3"
+	src_incs_="$4"
+	shift
+	set_src "" "$src_out_" "$src_deps_" "$src_incs_" "$srces_"
+}
 
+# Build the provided source directories and generate requested artifacts
+function set_src() {
+	if [[ "$(type -t do_config)" == 'function' ]]; then
+		do_set_src "$@"
+	fi
+}
+
+# Exclude some source directories from build
+function set_exclude_src() {
 	for ((i = 1; i <= $#; i++ ))
 	do
-		if [ "$src_" = "" ]; then
-			src_=${!i}
-		elif [ "$src_out_" = "" ]; then
-			src_out_=${!i}
-		elif [ "$src_deps_" = "" ]; then
-			src_deps_=${!i}
+		if [ "${!i}" = "/*" ]
+		then
+			echo "Invalid exclude source directory ${!i}"
+			continue
+		fi
+		if [ "${!i}" != "" ] && [ -d "${!i}" ]
+		then
+			if [[ $EXC_SRC != *";${!i};"* ]]; 
+			then
+				srces_=`find "${!i}" -type d \( -name '.*' -prune -o -print \)`
+				while IFS= read -r idir
+				do
+					EXC_SRC+=";$idir;"
+				done <<< "$srces_"
+			else
+				:
+			fi
+		else
+			echo "Skipping invalid exclude source directory ${!i}"
 		fi
 	done
+}
 
-	if [ ! -d "$src_" ]; then
-		echo "invalid src dir $1"
-		exit 1;
+# Exclude some source files from build
+function set_exclude_files() {
+	for ((i = 1; i <= $#; i++ ))
+	do
+		if [ "${!i}" = "/*" ]
+		then
+			echo "Invalid exclude source file ${!i}"
+			continue
+		fi
+		if [ "${!i}" != "" ] && [ -f "${!i}" ]
+		then
+			if [[ $EXC_FLS != *";$1;"* ]]; then EXC_FLS+=";$1;"; fi
+		else
+			echo "skipping invalid exclude src file ${!i}"
+		fi
+	done
+}
+
+# Template a given file using the list of variables defined
+# #1 - template file path (file should contain variables to be replaced withs syntax --- @VAR@)
+# #2 - resultant file path -- assuming the directory path for the file is present, does not create parent directories
+# #3 - list of comma separated variables to be replaced
+function templatize() {
+	if [ "$1" != "" ] && [ -f "$1" ] && [ "$2" != "" ] && [ "$3" != "" ]
+	then
+		rm -f "$2" | true
+		cp -f "$1" "$2"
+		if [ "$2" != "" ]; then
+			for tv_ in ${3//,/ }
+			do
+				sed -i'' -e "s|@$tv_@|${!tv_}|g" "$2"
+			done
+		else
+			:
+		fi
+	else
+		echo "Skipping invalid template file $1"
 	fi
-	if [ "$src_" = "/*" ]; then
-		echo "invalid src dir $1"
-		exit 1;
+}
+
+# If the configuration parameter passed allowed and is set to true
+function is_config() {
+	if [[ $PARAMS = *";$1=1;"* ]]; then
+		return
+	else
+		if [[ $ALLOWED_PARAMS = *";$1=1;"* ]]; then
+			return
+		else
+			false
+		fi
+	fi
+}
+
+# Handle the configuration information provided, parse it and update allowed parameter list
+# 'SOME_CONFIG|Some description for the config|1\n' 1|0 for true|false
+function handle_configs() {
+	if [ "$1" != "" ]; then
+		while IFS='\n' read -r con_
+		do
+			con_=(${con_// /_})
+			cp_=(${con_//|/ })
+			val_=0
+			if [ "${cp_[2]}" = "1" ] || [ "${cp_[2]}" = "yes" ] || [ "${cp_[2]}" = "true" ] || [ "${cp_[2]}" = "on" ]; then
+				val_=1
+			fi
+			if [[ $ALLOWED_PARAMS != *";${cp_[0]}=${val_};"* ]]; then ALLOWED_PARAMS+=";${cp_[0]}=${val_};"; fi
+		done <<< "$1"
+	fi
+}
+
+# Install the said files/directories to the install directory
+# #1 - Target subdirectory within the install directory
+# following arguments specify either,
+#    files to be installed
+#    directories to be installed
+#    "../path/to/source@*.sh,*.key,*.pem,*.crt" -- pattern after @ character for installing multiple files
+function install_here() {
+	if [ "$SB_INSDIR" = "" ]; then echo "Please set install directory first...using [set_install]" && exit 1; fi
+	if [[ "$1" != "." ]]; then
+		kv_validate_key "$1" || {
+			if ! [[ "$1" =~ "^." ]]; then
+				echo "Invalid install subdirectory $1, should be a valid directory name or ."
+				exit 1;
+			fi
+		}
+		ldir="$SB_OUTDIR/$SB_INSDIR/$1"
+	else
+		ldir="$SB_OUTDIR/$SB_INSDIR"
 	fi
 	
-	if [ "$IS_RUN" = "0" ]; then echo "got kill signal...shutting down..."; exit 1; fi
-	b_cpp_build "$src_" "$src_out_" "$src_deps_"
-}
-
-function set_exclude_src() {
-	if [ "$1" = "" ] || [ ! -d "$1" ]
-	then
-		echo "invalid exclude src dir $1"
-		exit 1;
+	if [ ! -d "$ldir" ]; then
+		mkdir "$ldir"
 	fi
-	if [ "$0" = "/*" ]
-	then
-		echo "invalid exclude src dir $1"
-		exit 1;
-	fi
-	EXC_SRC+=";$SB_OUTDIR/$1;"
-}
-
-function add_def() {
-	if [ "$1" = "" ]
-	then
-		echo "Invalid defines"
-	fi
+	shift
 	for ((i = 1; i <= $#; i++ ))
 	do
-		if [ "${!i}" != "" ]
-		then
-			echo "#define ${!i} 1" >> $DEFS_FILE
-		fi
-	done
-}
-
-function add_lib_path() {
-	for ((i = 1; i <= $#; i++ ))
-	do
-		if [ "${!i}" != "" ] && [ -d "${!i}" ]
-		then
-			LPATHS+="-L${!i} "
-			LPATHSQ+="\"-L${!i}\","
+		if [[ "${!i}" = *"@"* ]]; then
+			var_="${!i}"
+			pth_="${var_%%@*}"
+			wld_="${var_#*@}"
+			(set -f
+				for ex in ${wld_//,/ } ; do
+					exe "" find $pth_ -type f -name "$ex" -exec cp "{}" "$ldir" \;
+				done
+			)
 		else
-			echo "skipping invalid library path ${!i}"
+			fck_=$(remove_relative_path ${!i})
+			(set -f
+				if [ "$fck_" != "${!i}" ]; then
+					exe "" cp -rf "${!i}" "$ldir"
+				else
+					exe "" find $SB_OUTDIR/.bin/ -name "${!i}" -type f -exec cp "{}" "$ldir" \;
+				fi
+			)
 		fi
 	done
 }
 
-function add_lib() {
-	for ((i = 1; i <= $#; i++ ))
-	do
-		if [ "${!i}" != "" ]
-		then
-			LIBS+="-l${!i} "
-			LPATHSQ+="\"-l${!i}\","
-		else
-			echo "skipping invalid library name ${!i}"
-		fi
-	done
-}
-
-function add_inc_path() {
-	for ((i = 1; i <= $#; i++ ))
-	do
-		if [ "${!i}" != "" ] && [ -d "${!i}" ]
-		then
-			INCS+="-I${!i} "
-		else
-			echo "skipping invalid include path ${!i}"
-		fi
-	done
-}
-
-function c_flags() {
-	if [ "$1" = "" ]
-	then
-		echo "skipping invalid compiler flags"
+# Display help for the configuration parameters
+function show_help() {
+	if [ "$1" != "" ]; then
+		echo $'Allowed configuration paramaters are,'
+		while IFS='\n' read -r con_
+		do
+			con_=(${con_// /_})
+			cp_=(${con_//|/ })
+			cd_=${cp_[1]//_/ }
+			val_="${cp_[0]} - [$cd_] [Default: "
+			if [ "${cp_[2]}" = "1" ] || [ "${cp_[2]}" = "yes" ] || [ "${cp_[2]}" = "true" ] || [ "${cp_[2]}" = "on" ]; then
+				val_+="enabled]"
+			else
+				val_+="disabled]"
+			fi
+			echo -e "  $val_"
+		done <<< "$1"
+		echo $'\n\n'
 	fi
-	CFLAGS+="$1"
 }
 
-function l_flags() {
-	if [ "$1" = "" ]
-	then
-		echo "skipping invalid linker flags"
-	fi
-	LFLAGS+="$1"
-}
-
-export PATH=/usr/local/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-KV_USER_DIR=".shellb/.kv-bash"
-
+# Trap SIGKILL handler function
 function stop() {
 	IS_RUN=0
 	#echo $BG_PIDS
@@ -188,43 +308,98 @@ function stop() {
 	done
 }
 
+# Start shellb build process
+# Requirements - bash, sed, printf, awk, find, grep, ls
+# A valid shellb script should contain following functions,
+#     do_setup - define/set build options 
+#     do_start - kick off the actual configuration checks and build process
+# Following functions are optional
+#     do_config - define the configuration parameters
+#     do_install - define the installation steps to create a resulting artifact
 function start() {
-	if [ "$1" != "" ] && [ -f "$1" ]; then
-		. "$1"
-
-		rm -rf .shellb
-		mkdir .shellb
-
-		do_config
-		DEFS_FILE="$DIR/$DEFS_FILE"
-		rm -f "$DEFS_FILE"
-
-		if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-			OS_LINUX=1
-			echo "#define OS_LINUX 1" >> $DEFS_FILE
-			NUM_CPU=$(getconf _NPROCESSORS_ONLN)
-		elif [[ "$OSTYPE" == "darwin"* ]]; then
-			OS_DARWIN=1
-			echo "#define OS_DARWIN 1" >> $DEFS_FILE
-			NUM_CPU=$(getconf _NPROCESSORS_ONLN)
-			SHLIB_EXT=".dylib"
-		elif [[ "$OSTYPE" == "cygwin" ]]; then
-			OS_CYGWIN=1
-			echo "#define OS_CYGWIN 1" >> $DEFS_FILE
-			NUM_CPU=$(getconf _NPROCESSORS_ONLN)
-		elif [[ "$OSTYPE" == "msys" ]]; then
-			OS_MINGW=1
-			echo "#define OS_MINGW 1" >> $DEFS_FILE
-			NUM_CPU=$(getconf _NPROCESSORS_ONLN)
-		elif [[ "$OSTYPE" == "freebsd"* ]]; then
-			OS_BSD=1
-			echo "#define OS_BSD 1" >> $DEFS_FILE
-			NUM_CPU=$(getconf NPROCESSORS_ONLN)
+	if [ "$BUILD_PLATFORM" = "c_cpp" ]; then
+		if [[ "$(type -t add_def)" == 'function' ]]; then
+			:
+		else
+			. "$DIR/platform/c_cpp/checks.sh"
 		fi
+		if [[ "$(type -t b_init)" == 'function' ]]; then
+			:
+		else
+			. "$DIR/platform/c_cpp/build.sh"
+		fi
+	fi
+	
+	if [ "$1" != "" ]; then
+		bfile=
+		if [ -f "$1" ]; then 
+			bfile=$(remove_relative_path ${1})
+		elif [ -f "${1}.sh" ]; then 
+			bfile=$(remove_relative_path ${1}.sh)
+		fi
+		
+		if [ -f "$bfile" ]; then
+			if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+				OS_NAME="LINUX"
+				OS_LINUX=1
+				NUM_CPU=$(getconf _NPROCESSORS_ONLN)
+			elif [[ "$OSTYPE" == "darwin"* ]]; then
+				OS_NAME="DARWIN"
+				OS_DARWIN=1
+				NUM_CPU=$(getconf _NPROCESSORS_ONLN)
+			elif [[ "$OSTYPE" == "cygwin" ]]; then
+				OS_NAME="CYGWIN"
+				OS_CYGWIN=1
+				NUM_CPU=$(getconf _NPROCESSORS_ONLN)
+			elif [[ "$OSTYPE" == "msys" ]]; then
+				OS_NAME="MINGW"
+				OS_MINGW=1
+				NUM_CPU=$(getconf _NPROCESSORS_ONLN)
+			elif [[ "$OSTYPE" == "freebsd"* ]]; then
+				OS_NAME="BSD"
+				OS_BSD=1
+				NUM_CPU=$(getconf NPROCESSORS_ONLN)
+			else
+				OS_NAME="UNKNOWN"
+				NUM_CPU=$(getconf NPROCESSORS_ONLN)
+			fi
 
-		do_start
+			. "$bfile"
 
-		rm -rf .shellb
+			if [[ "$(type -t do_config)" == 'function' ]]; then
+				configs=$(do_config)
+				handle_configs "$configs"
+			fi
+
+			if [ "$2" = "help" ]; then
+				show_help "$configs"
+				exit 0
+			fi
+
+			for ((i = 2; i <= $#; i++ ))
+			do
+				if [[ $PARAMS != *";${!i};"* ]]; then PARAMS+=";${!i};"; fi
+			done
+
+			rm -rf .shellb
+			mkdir .shellb
+
+			do_setup
+			DEFS_FILE="$DIR/$DEFS_FILE"
+			if [ -f "$DEFS_FILE" ]; then
+				rm -f "$DEFS_FILE"
+
+			if [[ "$(type -t do_start)" == 'function' ]]; then
+				do_start
+			else
+				echo "Please provide a valid shellb script with a do_start function implementation"
+			fi
+			if [[ "$(type -t do_install)" == 'function' ]]; then
+				do_install
+			fi
+
+			rm -rf .shellb
+		fi
 	fi
 }
 

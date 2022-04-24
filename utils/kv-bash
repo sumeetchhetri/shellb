@@ -1,5 +1,6 @@
-#Sourced from https://raw.githubusercontent.com/damphat/kv-bash/master/kv-bash
 #!/usr/bin/env bash
+
+# Sourced from https://raw.githubusercontent.com/damphat/kv-bash/master/kv-bash
 # ABOUT kv-bash: 
 #    key/value dabatase
 #    database store in HOME directory

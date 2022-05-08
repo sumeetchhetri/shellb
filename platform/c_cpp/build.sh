@@ -80,6 +80,7 @@ function b_static_lib() {
 	prog="$1"
 	out_file="$2"
 	pushd "$SB_OUTDIR" > /dev/null
+	#echo `pwd`
 	exe "" ${prog} rcs .bin/${out_file} ${all_objs_}
 	popd > /dev/null
 }
@@ -90,6 +91,7 @@ function b_shared_lib() {
 	out_file="$2"
 	deps="$3"
 	pushd "$SB_OUTDIR" > /dev/null
+	#echo `pwd`
 	exe "" ${prog} -shared -L.bin/ $LPATHS ${all_objs_} -o .bin/${out_file} $deps
 	popd > /dev/null
 }
@@ -110,7 +112,7 @@ function _b_compile_single() {
 	tincs="$2"
 	if [ "$IS_RUN" -eq 0 ]; then
 		echo "Got kill signal...shutting down...";
-		break
+		exit 1
 	fi
 	fdir="$(dirname "${file}")"
 	ffil="$(basename "${file}")"
@@ -164,15 +166,23 @@ function b_compile() {
 	sources="$5"
 	exe_key="$6"
 	tincs="$INCS"
+
+	srces_=
+	files=
 	if [ "$sources" = "" ]; then
-		srces_=$(find ${src_} -type f -name "${ext}" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
-		files="$(find ${src_} -type f -name "${ext}")"
+		for ex_ in ${ext//,/ }
+		do
+			if [ "$ex_" != "" ]; then
+				srces_+=$(find ${src_} -type f -name "$ex_" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+				files+=$(find ${src_} -type f -name "$ex_")
+			fi
+		done
 	else
 		sources_=(${sources//,/ })
-		srces_=$(find ${sources_} -type f -name "${ext}" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+		srces_=$(find ${sources_} -type f -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
 	fi
 	if [ "$4" = "" ] && [ "$src_" != "" ]; then
-		includes=$(find ${src_} -type f -name '*.h' | sed -r 's|/[^/]+$||' |sort |uniq); 
+		includes=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' \) | sed -r 's|/[^/]+$||' |sort |uniq); 
 	elif [ "$4" != "" ]; then
 		for idir in ${4//,/ }
 		do
@@ -200,7 +210,7 @@ function b_compile() {
 		done <<< "$includes"
 	fi
 	if [ "$4" = "" ]; then INCS=$tincs; fi
-	echo "$tincs"
+	#echo "$tincs"
 	#echo "Count: $(echo -n "$1" | wc -l)"
 	all_objs_=
 	count=0

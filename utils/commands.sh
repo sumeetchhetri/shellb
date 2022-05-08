@@ -14,7 +14,7 @@ function bexe() {
 	if [ "$LOG_MODE" = "1" ]; then
 		echo -e "$1"
 		shift
-		"$@" > /dev/null 2>&1 &
+		"$@" > /dev/null &
 	else
 		shift
 		echo "\$ $@"

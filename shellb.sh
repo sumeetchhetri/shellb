@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-#___@@KV_BASH@___
-#___@@COMMANDS@___
 
 # First find out the current directory  -- from a stackoverflow thread
 myreadlink() { [ ! -h "$1" ] && echo "$1" || (local link="$(expr "$(command ls -ld -- "$1")" : '.*-> \(.*\)$')"; cd $(dirname $1); myreadlink "$link" | sed "s|^\([^/].*\)\$|$(dirname $1)/\1|"); }
@@ -388,6 +386,8 @@ function start() {
 			DEFS_FILE="$DIR/$DEFS_FILE"
 			if [ -f "$DEFS_FILE" ]; then
 				rm -f "$DEFS_FILE"
+			fi
+			touch "$DEFS_FILE"
 
 			if [[ "$(type -t do_start)" == 'function' ]]; then
 				do_start

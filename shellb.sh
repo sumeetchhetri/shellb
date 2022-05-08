@@ -6,6 +6,9 @@ myreadlink() { [ ! -h "$1" ] && echo "$1" || (local link="$(expr "$(command ls -
 whereis() { echo $1 | sed "s|^\([^/].*/.*\)|$(pwd)/\1|;s|^\([^/]*\)$|$(which -- $1)|;s|^$|$1|"; } 
 whereis_realpath() { local SCRIPT_PATH=$(whereis $1); myreadlink ${SCRIPT_PATH} | sed "s|^\([^/].*\)\$|$(dirname ${SCRIPT_PATH})/\1|"; } 
 DIR=$(dirname $(whereis_realpath "$0"))
+if [[ "$(type -t kv_echo_err)" == 'function' ]]; then
+	DIR=$(pwd)
+fi
 echo "Home directory is... $DIR"
 
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi

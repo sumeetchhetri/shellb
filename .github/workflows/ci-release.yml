@@ -17,7 +17,7 @@ jobs:
       id: extract_branch
     - name: Create binary
       run: |
-        chmod +x install.sh && ./install.sh
+        chmod +x install.sh && ./install.sh c_cpp
         chmod +x build/shellb && cp build/shellb /tmp/shellb
 
     - name: Create Release

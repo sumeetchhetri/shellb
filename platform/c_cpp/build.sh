@@ -1,4 +1,5 @@
 all_objs_=
+all_absobjs_=
 src_=
 l_paths=
 
@@ -92,7 +93,11 @@ function b_shared_lib() {
 	deps="$3"
 	pushd "$SB_OUTDIR" > /dev/null
 	#echo `pwd`
-	exe "" ${prog} -shared -L.bin/ $LPATHS ${all_objs_} -o .bin/${out_file} $deps
+	if defined "OS_DARWIN"; then
+		exe "" ${prog} -dynamiclib -L.bin/ $LPATHS ${all_objs_} -o .bin/${out_file} $deps
+	else
+		exe "" ${prog} -shared -L.bin/ $LPATHS ${all_objs_} -o .bin/${out_file} $deps
+	fi
 	popd > /dev/null
 }
 
@@ -106,6 +111,7 @@ function b_binary() {
 	popd > /dev/null
 }
 
+bg_pids=""
 # Compile a single file usign the said flags and skip andy exclude directories/files
 function _b_compile_single() {
 	file="$1"
@@ -116,12 +122,13 @@ function _b_compile_single() {
 	fi
 	fdir="$(dirname "${file}")"
 	ffil="$(basename "${file}")"
+	ofln=$ffil
 	if [[ ${EXC_SRC} == *";$fdir;"* ]]; then
-		echo "Skipping file ${file}..."
+		#echo "Skipping file ${file}..."
 		return
 	fi
 	if [[ ${EXC_FLS} == *";$fdir/$ffil;"* ]]; then
-		echo "Skipping file ${file}..."
+		#echo "Skipping file ${file}..."
 		return
 	fi
 	count=$((count+1))
@@ -141,24 +148,43 @@ function _b_compile_single() {
 	if [[ "$ffil" =~ ^./ ]]; then
 		ffil=$(echo "${ffil#./}")
 	fi
-	all_objs_+="${ffil}.o "
+
 	sbdir_="$SB_OUTDIR/"
 	if [[ "$sbdir_" = "./" ]]; then
 		sbdir_=""
 	fi
-	if [ ! -f "${sbdir_}${ffil}.o" ]; then
-		bexe "Compiling ${file}..." ${compiler} -MD -MP -MF "${sbdir_}${ffil}.d" -c ${cflags_} ${tincs} -o ${sbdir_}${ffil}.o ${file}
+	add_fpic=
+	chkfil=
+	if [ "$isshared" = 1 ]; then 
+		add_fpic="-fPIC"
+		all_objs_+="${ffil}.fo "
+		all_absobjs_+="${sbdir_}${ffil}.fo "
+		chkfil="${sbdir_}${ffil}.fo"
+	else
+		all_objs_+="${ffil}.o "
+		all_absobjs_+="${sbdir_}${ffil}.o "
+		chkfil="${sbdir_}${ffil}.o"
+	fi	
+	if [ ! -f "$chkfil" ]; then
+		bexe "Compiling ${file}..." ${compiler} -MD -MP -MF "${sbdir_}${ffil}.d" ${add_fpic} -c ${cflags_} ${tincs} -o ${chkfil} ${file}
+		showprogress 1 "${ofln}"
+	else
+		showprogress 1 "${ofln}"
 	fi
 	if [ "$count" = "$NUM_CPU" ]; then
-		wait
+		wait_bexe
 		count=0
 	fi
 }
 
 count=0
+isshared=1
+srces_=
+files=
+total_srces_=
 # The compilation function, also creates dependency files and tracks whether to compile the file 
 # or not based on the file modified datetime
-function b_compile() {
+function b_prepare_sources() {
 	compiler="$1"
 	src_="$2"
 	ext="$3"
@@ -181,6 +207,21 @@ function b_compile() {
 		sources_=(${sources//,/ })
 		srces_=$(find ${sources_} -type f -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
 	fi
+	kvset "SH_$(get_key $exe_key)" "$srces_"
+	total_srces_=$(cat $KV_USER_DIR/SH_$(get_key $exe_key)|wc -l)
+}
+function b_compile() {
+	compiler="$1"
+	src_="$2"
+	ext="$3"
+	includes=
+	sources="$5"
+	exe_key="$6"
+	tincs="$INCS"
+	
+	if [ "$sources" != "" ]; then
+		sources_=(${sources//,/ })
+	fi
 	if [ "$4" = "" ] && [ "$src_" != "" ]; then
 		includes=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' \) | sed -r 's|/[^/]+$||' |sort |uniq); 
 	elif [ "$4" != "" ]; then
@@ -193,7 +234,7 @@ function b_compile() {
 			tincs+="-I$idir "
 		done
 	fi
-	kvset "SH_$(get_key $exe_key)" "$srces_"
+	
 	#src_=$(remove_relative_path ${src_})
 	#if [ ! -d "$SB_OUTDIR/${src_}" ];then
 	#	mkdir -p $SB_OUTDIR/${src_}
@@ -213,7 +254,9 @@ function b_compile() {
 	#echo "$tincs"
 	#echo "Count: $(echo -n "$1" | wc -l)"
 	all_objs_=
+	all_absobjs_=
 	count=0
+	
 	if [ "$sources" = "" ]; then
 		while IFS= read -r file
 		do
@@ -226,7 +269,7 @@ function b_compile() {
 		done
 	fi
 	if [ "$count" -gt 0 ]; then
-		wait
+		wait_bexe
 	fi
 	#echo $all_objs_
 }
@@ -265,7 +308,7 @@ function do_set_src() {
 	
 	if [ "$1" = "" ] && [ "$src_files_" = "" ]
 	then
-		echo "Invalid source directory ----"
+		echo "Blank source directory provided ----"
 		exit 1;
 	fi
 
@@ -309,8 +352,37 @@ function do_build() {
 
 # Trigger a c build, first compilation and then followed by static library/shared library/binary creation
 function b_c_build() {
-	b_compile "${MY_CC}" "$1" "*.c" "$4" "$5" "$2"
 	type_=${2%:*}
+	if [ "$type_" = "static" ] || [ "$type_" = "stared" ] || [ "$type_" = "binary" ]; then
+		isshared=0
+	else
+		isshared=1
+	fi
+
+	percent_denom=$((percent_denom+5))
+	if [ "$type_" = "stared" ]; then
+		percent_denom=$((percent_denom+5))
+	fi
+
+	b_prepare_sources "${MY_CC}" "$1" "*.cpp" "$4" "$5" "$2"
+	percent_denom=$((percent_denom+total_srces_))
+
+	if [ "$type_" = "stared" ]; then
+		percent_denom=$((percent_denom+total_srces_))
+	fi
+
+	if [ "$is_init_progress_done" = 0 ]; then
+		#for do_config
+		showprogress 5 "Config Setup..."
+
+		#for do_config
+		showprogress "$percent_checks" "Config Checks..."
+
+		is_init_progress_done=1
+	fi
+
+	b_compile "${MY_CC}" "$1" "*.c" "$4" "$5" "$2"
+	
 	if [ "$type_" = "" ]; then
 		echo "Please specify Build output type, static, shared, stared or binary)"
 		exit 1
@@ -319,7 +391,7 @@ function b_c_build() {
 	for ilib in ${3//,/ }
 	do
 		if [ "$ilib" != "" ]; then deps+="-l$ilib "; fi
-		echo "dependency -- $ilib"
+		: #echo "dependency -- $ilib"
 	done
 
 	out_file_="${2#*:}"
@@ -330,20 +402,60 @@ function b_c_build() {
 
 	if [ "$type_" = "static" ]; then
 		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
-	elif [ "$type_" = "shared" ]; then
-		b_shared_lib "${MY_CC}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
-	elif [ "$type_" = "stared" ]; then
-		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
-		b_shared_lib "${MY_CC}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${STLIB_EXT}.."
 	elif [ "$type_" = "binary" ]; then
 		b_binary "${MY_CC}" "${out_file_}" "$deps"
+		showprogress 5 "${out_file_}.."
+	elif [ "$type_" = "shared" ]; then
+		b_shared_lib "${MY_CC}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${SHLIB_EXT}.."
+	elif [ "$type_" = "stared" ]; then
+		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${STLIB_EXT}.."
+		rm -f ${all_absobjs_}
+		isshared=1
+		b_compile "${MY_CC}" "$1" "*.c" "$4" "$5" "$2"
+		b_shared_lib "${MY_CC}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${SHLIB_EXT}.."
 	fi
 }
 
+is_init_progress_done=0
 # Trigger a c++ build, first compilation and then followed by static library/shared library/binary creation
 function b_cpp_build() {
-	b_compile "${MY_CPP}" "$1" "*.cpp" "$4" "$5" "$2"
 	type_=${2%:*}
+	if [ "$type_" = "static" ] || [ "$type_" = "stared" ] || [ "$type_" = "binary" ]; then
+		isshared=0
+	else
+		isshared=1
+	fi
+
+	percent_denom=$((percent_denom+5))
+	if [ "$type_" = "stared" ]; then
+		percent_denom=$((percent_denom+5))
+	fi
+
+	b_prepare_sources "${MY_CPP}" "$1" "*.cpp" "$4" "$5" "$2"
+	percent_denom=$((percent_denom+total_srces_))
+
+	if [ "$type_" = "stared" ]; then
+		percent_denom=$((percent_denom+total_srces_))
+	fi
+
+	#echo "$total_srces_ - $percent_numer of $percent_denom"
+
+	if [ "$is_init_progress_done" = 0 ]; then
+		#for do_config
+		showprogress 5 "Config Setup..."
+
+		#for do_config
+		showprogress "$percent_checks" "Config Checks..."
+
+		is_init_progress_done=1
+	fi
+
+	b_compile "${MY_CPP}" "$1" "*.cpp" "$4" "$5" "$2"
+
 	if [ "$type_" = "" ]; then
 		echo "Please specify Build output type, static, shared, stared or binary)"
 		exit 1
@@ -352,7 +464,7 @@ function b_cpp_build() {
 	for ilib in ${3//,/ }
 	do
 		if [ "$ilib" != "" ]; then deps+="-l$ilib "; fi
-		echo "dependency -- $ilib"
+		: #echo "dependency -- $ilib"
 	done
 
 	out_file_="${2#*:}"
@@ -362,13 +474,23 @@ function b_cpp_build() {
 	if [ "$type_" != "binary" ]; then out_file_="lib${out_file_}"; fi
 
 	if [ "$type_" = "static" ]; then
+		#delete existing object files and compile without fpic 
 		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
-	elif [ "$type_" = "shared" ]; then
-		b_shared_lib "${MY_CPP}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
-	elif [ "$type_" = "stared" ]; then
-		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
-		b_shared_lib "${MY_CPP}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${STLIB_EXT}.."
 	elif [ "$type_" = "binary" ]; then
 		b_binary "${MY_CPP}" "${out_file_}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.."
+	elif [ "$type_" = "shared" ]; then
+		b_shared_lib "${MY_CPP}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${SHLIB_EXT}.."
+	elif [ "$type_" = "stared" ]; then
+		b_static_lib "${MY_AR}" "${out_file_}.${STLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${STLIB_EXT}.."
+		#echo -e "rm -f ${all_absobjs_}"
+		#rm -f ${all_absobjs_}
+		isshared=1
+		b_compile "${MY_CPP}" "$1" "*.cpp" "$4" "$5" "$2"
+		b_shared_lib "${MY_CPP}" "${out_file_}.${SHLIB_EXT}" "$LIBS$deps"
+		showprogress 5 "${out_file_}.${SHLIB_EXT}.."
 	fi
 }

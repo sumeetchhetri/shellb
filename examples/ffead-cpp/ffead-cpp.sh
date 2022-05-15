@@ -2,7 +2,7 @@ function do_setup() {
 	LOG_MODE=1
 	BUILD_SYS=emb
 	BUILD_PLATFORM=c_cpp
-	DEFS_FILE="../ffead-cpp/src/modules/common/AppDefines.h"
+	DEFS_FILE="ffead-cpp/src/modules/common/AppDefines.h"
 }
 function do_config() {
 	configs+=$'MOD_MEMORY|Enable Memory Cache module|1\n'
@@ -62,26 +62,26 @@ function do_start() {
 	c_hdr_lib "uuid/uuid.h" "uuid" "HAVE_UUIDINC" "uuid devel not found"
 	c_hdr_lib "curl/curl.h" "curl" "HAVE_CURLINC,HAVE_CURLLIB" "curl devel not found"
 	if ! c_hdr_lib "openssl/ssl.h" "ssl" "HAVE_SSLINC,HAVE_SSLLIB" || ! c_lib "crypto" "HAVE_CRYPTOLIB"; then
-		set_exclude_src "../ffead-cpp/src/modules/ssl" "../ffead-cpp/src/modules/client-util/ssl"
+		set_exclude_src "ffead-cpp/src/modules/ssl" "ffead-cpp/src/modules/client-util/ssl"
 	fi
 	c_hdr_lib "libpq-fe.h" "pq" "HAVE_PQHDR,HAVE_LIBPQ" "libpq devel not found"
 	c_hdr_lib "sql.h" "odbc" "HAVE_SQLINC,HAVE_ODBCLIB,HAVE_LIBODBC,INC_SDORM,INC_SDORM_SQL" "odbc devel not found"
 	c_hdr_lib "mongoc.h" "mongoc-1.0" "HAVE_MONGOINC,HAVE_MONGOCLIB,INC_SDORM_MONGO" "libmongoc devel not found"
 	c_hdr_lib "bson.h" "bson-1.0" "HAVE_BSONINC,HAVE_BSONLIB" "libbson devel not found"
 	if ! is_config "MOD_SER_BIN"; then
-		set_exclude_src "../ffead-cpp/src/modules/serialization/binary"
+		set_exclude_src "ffead-cpp/src/modules/serialization/binary"
 	fi
 	if ! is_config "MOD_MEMORY"; then
-		set_exclude_src "../ffead-cpp/src/modules/cache/memory"
+		set_exclude_src "ffead-cpp/src/modules/cache/memory"
 	fi
 	if ! is_config "MOD_REDIS" || ! c_hdr_lib "hiredis/hiredis.h" "hiredis" "HAVE_REDISINC,HAVE_REDISLIB,INC_REDISCACHE"; then
-		set_exclude_src "../ffead-cpp/src/modules/cache/redis"
+		set_exclude_src "ffead-cpp/src/modules/cache/redis"
 	fi
 	if defined "HAVE_REDISINC"; then
 		cpp_hdr_lib "sw/redis++/redis++.h" "redis++" "HAVE_REDIS_CLUSTERINC,HAVE_REDIS_CLUSTERLIB,INC_REDISCACHE" ""
 	fi
 	if ! is_config "MOD_MEMCACHED" || ! c_hdr_lib "libmemcached/memcached.h" "memcached" "HAVE_MEMCACHEDINC,HAVE_MEMCACHEDLIB,INC_MEMCACHED"; then
-		set_exclude_src "../ffead-cpp/src/modules/cache/memcached"
+		set_exclude_src "ffead-cpp/src/modules/cache/memcached"
 	fi
 	if defined "HAVE_MEMCACHEDINC"; then
 		c_lib "memcachedutil"
@@ -89,61 +89,61 @@ function do_start() {
 	is_config "WITH_RAPIDJSON" && cpp_hdr "rapidjson/document.h" "HAVE_RAPID_JSON"
 	is_config "WITH_PUGIXML" && cpp_hdr_lib "pugixml.hpp" "pugixml" "HAVE_PUGI_XML"
 	if ! is_config "MOD_SDORM_SQL"; then
-		set_exclude_src "../ffead-cpp/src/modules/sdorm/sql"
+		set_exclude_src "ffead-cpp/src/modules/sdorm/sql"
 	fi
 	if ! is_config "MOD_SDORM_MONGO"; then
-		set_exclude_src "../ffead-cpp/src/modules/sdorm/mongo"
+		set_exclude_src "ffead-cpp/src/modules/sdorm/mongo"
 	fi
 	if ! is_config "MOD_SDORM_SCYLLA" || ! cpp_hdr_lib "cassandra.h" "scylla-cpp-driver" "HAVE_SCYLLAINC,HAVE_SCYLLALIB"; then
-		set_exclude_src "../ffead-cpp/src/modules/sdorm/scylla"
+		set_exclude_src "ffead-cpp/src/modules/sdorm/scylla"
 	fi
 	if ! is_config "MOD_ELASTIC" || ! cpp_hdr_lib "elasticlient/client.h" "elasticlient" "HAVE_ELASTIC"; then
-		set_exclude_src "../ffead-cpp/src/modules/search/elasticsearch"
+		set_exclude_src "ffead-cpp/src/modules/search/elasticsearch"
 	fi
 	if ! is_config "MOD_SOLR"; then
-		set_exclude_src "../ffead-cpp/src/modules/search/solr"
+		set_exclude_src "ffead-cpp/src/modules/search/solr"
 	else
 		add_def "HAVE_SOLR"
 	fi
 	if ! is_config "MOD_JOBS"; then
-		set_exclude_src "../ffead-cpp/src/modules/jobs"
+		set_exclude_src "ffead-cpp/src/modules/jobs"
 	fi
 	if ! is_config "WITH_PICOEV"; then
-		set_exclude_src "../ffead-cpp/src/modules/common/picoev"
+		set_exclude_src "ffead-cpp/src/modules/common/picoev"
 	else
 		add_def "USE_PICOEV"
 	fi
-	set_exclude_src "../ffead-cpp/src/modules/sdorm/gtm"
+	set_exclude_src "ffead-cpp/src/modules/sdorm/gtm"
 	if ! defined "OS_MINGW"; then
-		set_exclude_src "../ffead-cpp/src/modules/wepoll"
+		set_exclude_src "ffead-cpp/src/modules/wepoll"
 	fi
-	add_inc_path "../ffead-cpp/src/framework"
-	set_src "../ffead-cpp/src/modules" "stared:ffead-modules"
-	set_src "../ffead-cpp/src/framework" "stared:ffead-framework" "ffead-modules"
-	set_src "../ffead-cpp/tests" "binary:tests" "ffead-framework,ffead-modules"
-	set_src "../ffead-cpp/src/server/embedded" "binary:ffead-cpp" "ffead-framework,ffead-modules"
+	add_inc_path "ffead-cpp/src/framework"
+	set_src "ffead-cpp/src/modules" "stared:ffead-modules"
+	set_src "ffead-cpp/src/framework" "stared:ffead-framework" "ffead-modules"
+	set_src "ffead-cpp/tests" "binary:tests" "ffead-framework,ffead-modules"
+	set_src "ffead-cpp/src/server/embedded" "binary:ffead-cpp" "ffead-framework,ffead-modules"
 	
-	set_inc_src "../ffead-cpp/web/default/include" "../ffead-cpp/web/default/src" "stared:default" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/flexApp/include" "../ffead-cpp/web/flexApp/src" "stared:flexApp" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/markers/include" "../ffead-cpp/web/markers/src" "stared:markers" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/oauthApp/include" "../ffead-cpp/web/oauthApp/src" "stared:oauthApp" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/peer-server/include" "../ffead-cpp/web/peer-server/src" "stared:peer-server" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/te-benchmark/include" "../ffead-cpp/web/te-benchmark/src" "stared:te-benchmark" "ffead-framework,ffead-modules"
-	set_inc_src "../ffead-cpp/web/t1/include" "../ffead-cpp/web/t1/src" "stared:t1" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/default/include" "ffead-cpp/web/default/src" "stared:default" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/flexApp/include" "ffead-cpp/web/flexApp/src" "stared:flexApp" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/markers/include" "ffead-cpp/web/markers/src" "stared:markers" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/oauthApp/include" "ffead-cpp/web/oauthApp/src" "stared:oauthApp" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/peer-server/include" "ffead-cpp/web/peer-server/src" "stared:peer-server" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/te-benchmark/include" "ffead-cpp/web/te-benchmark/src" "stared:te-benchmark" "ffead-framework,ffead-modules"
+	set_inc_src "ffead-cpp/web/t1/include" "ffead-cpp/web/t1/src" "stared:t1" "ffead-framework,ffead-modules"
 	if is_config "MOD_SDORM_MONGO"; then
-		set_inc_src "../ffead-cpp/web/t2/include" "../ffead-cpp/web/t2/src" "stared:t2" "ffead-framework,ffead-modules"
+		set_inc_src "ffead-cpp/web/t2/include" "ffead-cpp/web/t2/src" "stared:t2" "ffead-framework,ffead-modules"
 	fi
 	if is_config "MOD_SDORM_SQL"; then
-		set_inc_src "../ffead-cpp/web/t3/include" "../ffead-cpp/web/t3/src" "stared:t3" "ffead-framework,ffead-modules"
-		set_inc_src "../ffead-cpp/web/t4/include" "../ffead-cpp/web/t4/src" "stared:t4" "ffead-framework,ffead-modules"
-		set_inc_src "../ffead-cpp/web/t5/include" "../ffead-cpp/web/t5/src" "stared:t5" "ffead-framework,ffead-modules"
+		set_inc_src "ffead-cpp/web/t3/include" "ffead-cpp/web/t3/src" "stared:t3" "ffead-framework,ffead-modules"
+		set_inc_src "ffead-cpp/web/t4/include" "ffead-cpp/web/t4/src" "stared:t4" "ffead-framework,ffead-modules"
+		set_inc_src "ffead-cpp/web/t5/include" "ffead-cpp/web/t5/src" "stared:t5" "ffead-framework,ffead-modules"
 	fi
-	templatize "../ffead-cpp/rtdcf/inter-shellb.sh.tem" "../ffead-cpp/rtdcf/inter-shellb.sh" "CPPFLAGS,LFLAGS,LIBS"
+	templatize "ffead-cpp/rtdcf/inter-shellb.sh.tem" "ffead-cpp/rtdcf/inter-shellb.sh" "CPPFLAGS,LFLAGS,LIBS"
 }
 function do_install() {
-	install_here "." "ffead-cpp" "../ffead-cpp/script@*.sh,*.key,*.pem,*.crt" "../ffead-cpp/resources" "../ffead-cpp/public" "../ffead-cpp/rtdcf" "../ffead-cpp/web"
+	install_here "." "ffead-cpp" "ffead-cpp/script@*.sh,*.key,*.pem,*.crt" "ffead-cpp/resources" "ffead-cpp/public" "ffead-cpp/rtdcf" "ffead-cpp/web"
 	install_here "lib" "lib*.${SHLIB_EXT}"
-	install_here "include" "../ffead-cpp/src/framework@*.h" "../ffead-cpp/src/modules@*.h"
+	install_here "include" "ffead-cpp/src/framework@*.h" "ffead-cpp/src/modules@*.h"
 	install_here "logs"
-	install_here "tests" "tests" "../ffead-cpp/tests/@*.sh,*.pem,*.csv,*.prop"
+	install_here "tests" "tests" "ffead-cpp/tests/@*.sh,*.pem,*.csv,*.prop"
 }

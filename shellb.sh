@@ -71,12 +71,19 @@ OS_MINGW=
 # Do we continue execution or stop in case of a signal received
 IS_RUN=1
 
+percent_denom=0
+percent_numer=0
+percent_checks=0
+
+configs_log_file="$DIR/.shellb/checks.log"
+cmds_log_file="$DIR/.shellb/commands.log"
+
 # Update PATH and LD_LIBRARY_PATH to include /usr/local as well
 export PATH=/usr/local/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 # Directory to store kv-hash files -- key-value pairs
-KV_USER_DIR=".shellb/.kv-bash"
+KV_USER_DIR="$DIR/.shellb/.kv-bash"
 
 # Set the build output directory, if not found create it
 function set_out() {
@@ -88,9 +95,12 @@ function set_out() {
 	if [ "$SB_OUTDIR" = "" ]; then
 		SB_OUTDIR=$1
 	fi
-	if [ -d "$SB_OUTDIR" ]
+	if [ ! -d "$SB_OUTDIR" ]
 	then
 		mkdir -p $SB_OUTDIR
+	fi
+	if [ ! -d "$SB_OUTDIR/.bin" ]
+	then
 		mkdir -p $SB_OUTDIR/.bin
 	fi
 }
@@ -126,7 +136,7 @@ function set_src_files() {
 
 # Build the provided source directories and generate requested artifacts
 function set_src() {
-	if [[ "$(type -t do_config)" == 'function' ]]; then
+	if [[ "$(type -t do_start)" == 'function' ]]; then
 		do_set_src "$@"
 	fi
 }
@@ -264,9 +274,11 @@ function install_here() {
 				done
 			)
 		else
-			fck_=$(remove_relative_path ${!i})
+			#fck_=$(remove_relative_path ${!i})
 			(set -f
-				if [ "$fck_" != "${!i}" ]; then
+				if [ -f "$SB_OUTDIR/.bin/${!i}" ]; then
+					exe "" cp -f "$SB_OUTDIR/.bin/${!i}" "$ldir"
+				elif [ -d "${!i}" ]; then
 					exe "" cp -rf "${!i}" "$ldir"
 				else
 					exe "" find $SB_OUTDIR/.bin/ -name "${!i}" -type f -exec cp "{}" "$ldir" \;
@@ -274,6 +286,7 @@ function install_here() {
 			)
 		fi
 	done
+	showprogress 3 "Installing..."
 }
 
 # Display help for the configuration parameters
@@ -305,6 +318,7 @@ function stop() {
 		while kill -0 $i > /dev/null 2>&1
 		do
 			wait $i
+			BG_PIDS=$(echo ${BG_PIDS/$i /})
 		done
 	done
 }
@@ -330,7 +344,7 @@ function start() {
 			. "$DIR/platform/c_cpp/build.sh"
 		fi
 	fi
-	
+
 	if [ "$1" != "" ]; then
 		bfile=
 		if [ -f "$1" ]; then 
@@ -370,6 +384,28 @@ function start() {
 			if [[ "$(type -t do_config)" == 'function' ]]; then
 				configs=$(do_config)
 				handle_configs "$configs"
+				percent_denom=$((percent_denom+5))
+			fi
+
+			if [[ "$(type -t do_start)" == 'function' ]]; then
+				code_chdr_=$(type -a do_start|grep "c_hdr"|wc -l)
+				code_clib_=$(type -a do_start|grep "c_lib"|wc -l)
+				code_cfunc_=$(type -a do_start|grep "c_func"|wc -l)
+				code_ccode_=$(type -a do_start|grep "c_code"|wc -l)
+				code_cpphdr_=$(type -a do_start|grep "cpp_hdr"|wc -l)
+				code_cpplib_=$(type -a do_start|grep "cpp_lib"|wc -l)
+				code_cppcode_=$(type -a do_start|grep "cpp_code"|wc -l)
+				percent_checks=$((code_chdr_+code_clib_+code_cfunc_+code_ccode_+code_cpphdr_+code_cpplib_+code_cppcode_))
+				percent_checks=$((percent_checks+percent_checks+percent_checks))
+				percent_denom=$((percent_denom+percent_checks))
+				#echo "$percent_checks"
+			fi
+
+			if [[ "$(type -t do_install)" == 'function' ]]; then
+				code_install_here_=$(type -a do_install|grep "install_here"|wc -l)
+				code_install_here_=$((code_install_here_+code_install_here_+code_install_here_))
+				percent_denom=$((percent_denom+code_install_here_))
+				#echo "$code_install_here_"
 			fi
 
 			if [ "$2" = "help" ]; then
@@ -384,6 +420,9 @@ function start() {
 
 			rm -rf .shellb
 			mkdir .shellb
+
+			touch $configs_log_file
+			touch $cmds_log_file
 
 			do_setup
 			DEFS_FILE="$DIR/$DEFS_FILE"
@@ -402,6 +441,7 @@ function start() {
 			fi
 
 			rm -rf .shellb
+			completeprogress "Finishing..."
 		fi
 	fi
 }

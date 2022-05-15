@@ -139,7 +139,7 @@ function add_lib() {
 				fi
 			fi
 		else
-			echo "Skipping invalid library name ${!i}"
+			: #echo "Skipping invalid library name ${!i}"
 		fi
 	done
 }
@@ -161,7 +161,7 @@ function add_inc_path() {
 function c_flags() {
 	if [ "$1" = "" ]
 	then
-		echo "Skipping invalid c compiler flags"
+		: #echo "Skipping invalid c compiler flags"
 	fi
 	CFLAGS+="$1 "
 }
@@ -170,7 +170,7 @@ function c_flags() {
 function cpp_flags() {
 	if [ "$1" = "" ]
 	then
-		echo "skipping invalid c++ compiler flags"
+		: #echo "skipping invalid c++ compiler flags"
 	fi
 	CPPFLAGS+="$1 "
 }
@@ -178,7 +178,7 @@ function cpp_flags() {
 function l_flags() {
 	if [ "$1" = "" ]
 	then
-		echo "skipping invalid linker flags"
+		: #echo "skipping invalid linker flags"
 	fi
 	LFLAGS+="$1"
 }
@@ -226,21 +226,26 @@ function c_finalize() {
 		do
 			add_def "$i"
 		done
+		echo "success " >> $configs_log_file
 		popd > /dev/null
 		return
 	else
 		if [ "$error_" != "" ]
 		then
-			echo "error: $error_"
+			echo "error: $error_" >> $configs_log_file
+		else
+			echo "error " >> $configs_log_file
 		fi
 		popd > /dev/null
 		false
 	fi
+	#showprogress 3
 }
 
 # Check whether a c include file exists and can be compiled
 function c_hdr() {
 	c_init "$@"
+	echo "\$ c_init $@" >> $configs_log_file
 	printf "$test_c_code_\n" > ./.test.c
 	sed -i'' -e "s|INC_FILE|$1|g" .test.c
 	b_test cc .test.c
@@ -251,6 +256,7 @@ function c_hdr() {
 # Check whether a c library file exists and can be used for linking
 function c_lib() {
 	c_init "$@"
+	echo "\$ c_lib $@" >> $configs_log_file
 	printf "$test_lib_code_\n" > ./.testlib.c
 	b_test cccl .testlib.c "$1"
 	if c_finalize; then return; fi
@@ -265,6 +271,7 @@ function c_hdr_lib() {
 	error_=$4
 	EX_DIR1=$5
 	EX_DIR2=$6
+	echo "\$ c_hdr_lib $@" >> $configs_log_file
 	printf "$test_c_code_\n" > ./.testlibhdr.c
 	sed -i'' -e "s|INC_FILE|$1|g" .testlibhdr.c
 	b_test cccl .testlibhdr.c "$2"
@@ -275,6 +282,7 @@ function c_hdr_lib() {
 # Check whether the c code can be compiled
 function c_code() {
 	c_init "$@"
+	echo "\$ c_code $@" >> $configs_log_file
 	printf "$1\n" > ./.testcode.c
 	b_test cc .testcode.c
 	if c_finalize; then return; fi
@@ -284,6 +292,7 @@ function c_code() {
 # Check whether the c function is availabe
 function c_func() {
 	c_init "$@"
+	echo "\$ c_func $@" >> $configs_log_file
 	printf "$test_func_code_\n" > ./.testfunc.c
 	sed -i'' -e "s|FUNC_NAME|$1|g" .testfunc.c
 	b_test cccl .testfunc.c
@@ -294,6 +303,7 @@ function c_func() {
 # Check whether a c++ include file exists and can be compiled
 function cpp_hdr() {
 	c_init "$@"
+	echo "\$ cpp_hdr $@" >> $configs_log_file
 	printf "$test_c_code_\n" > ./.test.cpp
 	sed -i'' -e "s|INC_FILE|$1|g" .test.cpp
 	b_test cppc .test.cpp
@@ -304,6 +314,7 @@ function cpp_hdr() {
 # Check whether a c++ library file exists and can be used for linking
 function cpp_lib() {
 	c_init "$@"
+	echo "\$ cpp_lib $@" >> $configs_log_file
 	printf "$test_lib_code_\n" > ./.testlib.cpp
 	b_test cppccppl .testlib.cpp "$1"
 	if c_finalize; then return; fi
@@ -318,6 +329,7 @@ function cpp_hdr_lib() {
 	error_=$4
 	EX_DIR1=$5
 	EX_DIR2=$6
+	echo "\$ cpp_hdr_lib $@" >> $configs_log_file
 	printf "$test_c_code_\n" > ./.testlibhdr.cpp
 	sed -i'' -e "s|INC_FILE|$1|g" .testlibhdr.cpp
 	b_test cppccppl .testlibhdr.cpp "$2"
@@ -328,6 +340,7 @@ function cpp_hdr_lib() {
 # Check whether the c++ code can be compiled
 function cpp_code() {
 	c_init "$@"
+	echo "\$ cpp_code $@" >> $configs_log_file
 	printf "$1\n" > ./.testcode.cpp
 	b_test cppc .testcode.cpp
 	if c_finalize; then return; fi

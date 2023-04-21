@@ -10,7 +10,16 @@
 			"request": "launch",
 			"name": "Bash-Debug (simplest configuration)",
 			"program": "${file}",
-			"args": ["ffead-cpp", ""]
+			"args": ["ffead-cpp-shellb", ""]
+		},
+		{
+			"pathBash": "/usr/local/bin/bash",
+			"type": "bashdb",
+			"request": "launch",
+			"name": "Bash-Debug PWD (simplest configuration)",
+			"program": "${file}",
+			"args": ["ffead-cpp-shellb", ""],
+			"cwd": "${fileDirname}"
 		}
 	]
 }

@@ -23,6 +23,9 @@ LPATHSQ=
 LIBS=
 # The list of all include directories to be used during compilation
 INCS=
+INCSQ=
+PINCSQ=
+PINCSD=
 # The c compiler flags for build
 CFLAGS=
 # The c++ compiler flags for build
@@ -70,9 +73,6 @@ test_lib_code_=$(cat <<-END
 int main() {return 0;}
 END
 )
-#test_c_code_=$(<snippets/c_cpp/.test.c)
-#test_func_code_=$(<snippets/c_cpp/.testfunc.c)
-#test_lib_code_=$(<snippets/c_cpp/.testlib.c)
 
 # The additional set of directores to be considered as include/library paths
 EX_DIR=
@@ -150,7 +150,13 @@ function add_inc_path() {
 	do
 		if [ "${!i}" != "" ] && [ -d "${!i}" ]
 		then
-			if [[ $INCS != *"-I${!i} "* ]]; then INCS+="-I${!i} "; fi
+			if [[ $INCS != *"-I${!i} "* ]]; then 
+				INCS+="-I${!i} "
+				INCSQ+="${!i},"
+				if [[ ${!i} != "/"* ]]; then
+					PINCSD="\"-I${!i}\","
+				fi
+			fi
 		else
 			echo "skipping invalid include path ${!i}"
 		fi
@@ -171,16 +177,23 @@ function cpp_flags() {
 	if [ "$1" = "" ]
 	then
 		: #echo "skipping invalid c++ compiler flags"
+	else
+		CPPFLAGS+="$1 "
+		if [ "$BUILD_SYS" != "buck2" ]; then
+			PINCSQ+="\"$1\","
+		fi
 	fi
-	CPPFLAGS+="$1 "
 }
 
 function l_flags() {
 	if [ "$1" = "" ]
 	then
 		: #echo "skipping invalid linker flags"
+	else
+		LFLAGS+="$1"
+		LPATHS+="$1 "
+		LPATHSQ+="\"$1\","
 	fi
-	LFLAGS+="$1"
 }
 
 # Check whether a macro is defined

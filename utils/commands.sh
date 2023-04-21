@@ -4,6 +4,12 @@ function sanitize_var() {
 	echo $(echo ${1} | sed -e "s|[^a-zA-Z0-9_]||g")
 }
 
+# Removes any non-alphabetical and non numeric characters from a possible
+# shell variable name, allows only underscore
+function sanitize_var1() {
+	echo $(echo ${1} | sed -e "s|[^a-zA-Z0-9_]|_|g")
+}
+
 # Maintains a list of process ids of background processes
 BG_PIDS=
 
@@ -49,6 +55,7 @@ function exe() {
 		echo "\$ $@" >> $cmds_log_file 2>&1
 		"$@" >> $cmds_log_file 2>&1
 	fi
+	return $?
 }
 
 # Remove any relative path identifiers from a path variable
@@ -110,8 +117,10 @@ function find_cmd() {
 }
 
 function showprogress() {
-	percent_numer=$((percent_numer+$1))
-	ProgressBar "$percent_numer" "$percent_denom" "$2"
+	if [ "$BUILD_SYS" = "emb" ]; then
+		percent_numer=$((percent_numer+$1))
+		ProgressBar "$percent_numer" "$percent_denom" "$2"
+	fi
 }
 
 function completeprogress() {

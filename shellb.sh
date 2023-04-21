@@ -11,6 +11,11 @@ if [[ "$(type -t kv_echo_err)" == 'function' ]]; then
 fi
 echo "Home directory is... $DIR"
 
+#Project name for bazel builds
+BUILD_PROJ_NAME=
+# Variable to define/control the target build system (embedded being the default)
+BUILD_SYS=emb
+
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 
 if [[ "$(type -t kv_echo_err)" == 'function' ]]; then
@@ -24,14 +29,27 @@ else
 	. "$DIR/utils/commands.sh"
 fi
 
+if [ "$BUILD_SYS" = "bazel" ]; then
+	if [[ "$(type -t bzl_gen_build_file)" == 'function' ]]; then
+		:
+	else
+		. "$DIR/tools/bazel/bazel-util.sh"
+	fi
+fi
+
+if [ "$BUILD_SYS" = "buck2" ]; then
+	if [[ "$(type -t bck2_gen_build_file)" == 'function' ]]; then
+		:
+	else
+		. "$DIR/tools/buck2/buck2-util.sh"
+	fi
+fi
+
 # Trap SIGKILL signal -- execute stop function
 trap "stop" 2
 
 # Variable to define/control the target platform/language c_cpp being the default
 BUILD_PLATFORM=c_cpp
-
-# Variable to define/control the target build system (embedded being the default)
-BUILD_SYS=emb
 
 # The list of source directories to exclude from the build
 EXC_SRC=
@@ -126,6 +144,13 @@ function set_install() {
 # Build the provided source files and generate requested artifacts
 function set_src_files() {
 	if [ "$SB_OUTDIR" = "" ]; then echo "Please set output directory first..." && exit 1; fi
+	if [ "$BUILD_SYS" = "bazel" ]; then
+		BZL_SRC_NAME="$1"
+		shift
+	elif [ "$BUILD_SYS" = "buck2" ]; then
+		BCK2_SRC_NAME="$1"
+		shift
+	fi
 	srces_="$1"
 	src_out_="$2"
 	src_deps_="$3"
@@ -136,6 +161,13 @@ function set_src_files() {
 
 # Build the provided source directories and generate requested artifacts
 function set_src() {
+	if [ "$BUILD_SYS" = "bazel" ]; then
+		BZL_SRC_NAME="$1"
+		shift
+	elif [ "$BUILD_SYS" = "buck2" ]; then
+		BCK2_SRC_NAME="$1"
+		shift
+	fi
 	if [[ "$(type -t do_start)" == 'function' ]]; then
 		do_set_src "$@"
 	fi
@@ -259,7 +291,7 @@ function install_here() {
 	fi
 	
 	if [ ! -d "$ldir" ]; then
-		mkdir "$ldir"
+		mkdir -p "$ldir"
 	fi
 	shift
 	for ((i = 1; i <= $#; i++ ))
@@ -268,6 +300,11 @@ function install_here() {
 			var_="${!i}"
 			pth_="${var_%%@*}"
 			wld_="${var_#*@}"
+			if [ -d "$DIR/$pth_" ]; then
+				pth_="$DIR/$pth_"
+			elif [ -d "${!i}" ]; then
+				:
+			fi
 			(set -f
 				for ex in ${wld_//,/ } ; do
 					exe "" find $pth_ -type f -name "$ex" -exec cp "{}" "$ldir" \;
@@ -278,14 +315,46 @@ function install_here() {
 			(set -f
 				if [ -f "$SB_OUTDIR/.bin/${!i}" ]; then
 					exe "" cp -f "$SB_OUTDIR/.bin/${!i}" "$ldir"
+				elif [ -d "$DIR/${!i}" ]; then
+					exe "" cp -rf "$DIR/${!i}" "$ldir"
 				elif [ -d "${!i}" ]; then
 					exe "" cp -rf "${!i}" "$ldir"
+				elif [ -f "$DIR/${!i}" ]; then
+					exe "" cp -f "$DIR/${!i}" "$ldir"
+				elif [ -f "${!i}" ]; then
+					exe "" cp -f "${!i}" "$ldir"
 				else
 					exe "" find $SB_OUTDIR/.bin/ -name "${!i}" -type f -exec cp "{}" "$ldir" \;
 				fi
 			)
 		fi
 	done
+	showprogress 3 "Installing..."
+}
+
+# Install the said files/directories to the install directory
+# #1 - Target subdirectory within the install directory
+# following arguments specify either,
+#    files to be installed
+#    directories to be installed
+#    "../path/to/source@*.sh,*.key,*.pem,*.crt" -- pattern after @ character for installing multiple files
+function install_mkdir() {
+	if [ "$SB_INSDIR" = "" ]; then echo "Please set install directory first...using [set_install]" && exit 1; fi
+	if [[ "$1" != "." ]]; then
+		kv_validate_key "$1" || {
+			if ! [[ "$1" =~ "^." ]]; then
+				echo "Invalid install subdirectory $1, should be a valid directory name or ."
+				exit 1;
+			fi
+		}
+		ldir="$SB_OUTDIR/$SB_INSDIR/$1"
+	else
+		ldir="$SB_OUTDIR/$SB_INSDIR"
+	fi
+	
+	if [ ! -d "$ldir" ]; then
+		mkdir -p "$ldir"
+	fi
 	showprogress 3 "Installing..."
 }
 
@@ -321,6 +390,24 @@ function stop() {
 			BG_PIDS=$(echo ${BG_PIDS/$i /})
 		done
 	done
+}
+
+# Perform certain platform specific actions based on platform/build tool
+function do_postbuild() {
+	if [ "$BUILD_SYS" = "bazel" ]; then
+		do_bazel_build "$@"
+	elif [ "$BUILD_SYS" = "buck2" ]; then
+		do_buck2_build "$@"
+	fi
+}
+
+# Perform certain platform specific actions based on platform/build tool
+function do_prebuild() {
+	if [ "$BUILD_SYS" = "bazel" ]; then
+		do_bazel_pre_build "$@"
+	elif [ "$BUILD_SYS" = "buck2" ]; then
+		do_buck2_pre_build "$@"
+	fi
 }
 
 # Start shellb build process
@@ -430,6 +517,12 @@ function start() {
 				rm -f "$DEFS_FILE"
 			fi
 			touch "$DEFS_FILE"
+
+			if [ "$BUILD_SYS" = "bazel" ]; then
+				do_prebuild
+			elif [ "$BUILD_SYS" = "buck2" ]; then
+				do_prebuild
+			fi
 
 			if [[ "$(type -t do_start)" == 'function' ]]; then
 				do_start

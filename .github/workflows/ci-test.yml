@@ -19,7 +19,6 @@ jobs:
         cp examples/ffead-cpp/ffead-cpp.sh examples/ffead-cpp/ffead-cpp-bazel.sh examples/ffead-cpp/ffead-cpp-buck2.sh ffead-cpp/
         cd ffead-cpp
         shellb ffead-cpp
-    - uses: actions/checkout@v2
     - name: Test shellb-bazel
       run: |
         sudo apt-get install pkg-config zip g++ zlib1g-dev unzip python
@@ -27,7 +26,6 @@ jobs:
         chmod +x bazel-6.1.2-installer-linux-x86_64.sh
         ./bazel-6.1.2-installer-linux-x86_64.sh
         shellb ffead-cpp-bazel
-    - uses: actions/checkout@v2
     - name: Test shellb-buck2
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

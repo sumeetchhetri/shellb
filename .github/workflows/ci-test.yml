@@ -24,7 +24,7 @@ jobs:
         export PATH=$HOME/bin:$PATH
     - name: Install buck2
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         rustup install nightly-2023-01-24
         cargo +nightly-2023-01-24 install --git https://github.com/facebook/buck2.git buck2
         export PATH=$HOME/.cargo/bin:$PATH

@@ -12,24 +12,32 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip_build]')"
     steps:
     - uses: actions/checkout@v2
-    - name: Test shellb
+    - name: Install shellb
       run: |
         chmod +x install.sh && ./install.sh c_cpp && chmod +x build/shellb && mv build/shellb /usr/local/bin/
-        git clone https://github.com/sumeetchhetri/ffead-cpp
-        cp examples/ffead-cpp/ffead-cpp.sh examples/ffead-cpp/ffead-cpp-bazel.sh examples/ffead-cpp/ffead-cpp-buck2.sh ffead-cpp/
-        cd ffead-cpp
-        shellb ffead-cpp
-    - name: Test shellb-bazel
+    - name: Install bazel
       run: |
-        sudo apt-get install pkg-config zip g++ zlib1g-dev unzip python
+        sudo apt install pkg-config zip g++ zlib1g-dev unzip wget
         wget https://github.com/bazelbuild/bazel/releases/download/6.1.2/bazel-6.1.2-installer-linux-x86_64.sh
         chmod +x bazel-6.1.2-installer-linux-x86_64.sh
         ./bazel-6.1.2-installer-linux-x86_64.sh
-        shellb ffead-cpp-bazel
-    - name: Test shellb-buck2
+    - name: Install buck2
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
         rustup install nightly-2023-01-24
         cargo +nightly-2023-01-24 install --git https://github.com/facebook/buck2.git buck2
         export PATH=$HOME/.cargo/bin:$PATH
+    - name: Checkout test project
+      run: |
+        git clone https://github.com/sumeetchhetri/ffead-cpp
+        cp examples/ffead-cpp/ffead-cpp.sh examples/ffead-cpp/ffead-cpp-bazel.sh examples/ffead-cpp/ffead-cpp-buck2.sh ffead-cpp/
+        cd ffead-cpp  
+    - name: Test shellb
+      run: |
+        shellb ffead-cpp
+    - name: Test shellb-bazel
+      run: |
+        shellb ffead-cpp-bazel
+    - name: Test shellb-buck2
+      run: |
         shellb ffead-cpp-buck2

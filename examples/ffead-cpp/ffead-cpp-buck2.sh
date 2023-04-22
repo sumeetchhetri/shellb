@@ -1,7 +1,7 @@
 function do_setup() {
 	LOG_MODE=1
 	BUILD_PROJ_NAME=ffead-cpp
-	BUILD_SYS=bazel
+	BUILD_SYS=buck2
 	BUILD_PLATFORM=c_cpp
 	DEFS_FILE="src/modules/common/AppDefines.h"
 }
@@ -38,7 +38,10 @@ function do_start() {
 	add_inc_path "/usr/include/libbson-1.0" "/usr/local/include/libmongoc-1.0" "/usr/local/include/libbson-1.0"
 	add_inc_path "/usr/include/postgresql" "/usr/include/pgsql" "/usr/local/include/postgresql" "/usr/local/include/pgsql"
 	add_def "OS_${OS_NAME}" "BUILD_BAZEL" "INC_WEBSVC" "INC_TPE" "INC_DVIEW" "INC_DCP" "INC_XMLSER"
-	if [ "$OS_DARWIN" = "1" ]; then add_def "APPLE"; fi
+	if [ "$OS_DARWIN" = "1" ]; then 
+		add_def "APPLE"; 
+		l_flags "--ld-path=/usr/local/opt/llvm/bin/ld64.lld"
+	fi
 	c_hdr "execinfo.h" "HAVE_EXECINFOINC"
 	c_hdr "sys/sendfile.h" "IS_SENDFILE"
 	c_hdr "sys/sysinfo.h" "HAVE_SYSINFO"
@@ -131,29 +134,28 @@ function do_start() {
 		set_exclude_src "src/modules/wepoll"
 	fi
 	add_inc_path "src/framework"
-	#set_src "ffead-modules" "src/modules" "shared:ffead-modules" "//src/framework:ffead-framework-inc"
-	set_src "ffead-modules" "src/modules" "shared:ffead-modules"
-	set_src "ffead-framework" "src/framework" "shared:ffead-framework" "ffead-modules"
-	set_src "tests" "tests" "binary:tests" "ffead-framework,ffead-modules"
-	set_src "ffead-cpp" "src/server/embedded" "binary:ffead-cpp" "ffead-framework,ffead-modules"
+	set_src "src/modules" "shared:ffead-modules"
+	set_src "src/framework" "shared:ffead-framework" "ffead-modules"
+	set_src "tests" "binary:tests" "ffead-framework,ffead-modules"
+	set_src "src/server/embedded" "binary:ffead-cpp" "ffead-framework,ffead-modules"
 	
 	apps_to_build="ffead-modules,ffead-framework,ffead-cpp,tests,default,flexApp,markers,oauthApp,peer-server,te-benchmark,t1"
-	set_inc_src "default" "web/default/include" "web/default/src" "shared:default" "ffead-framework,ffead-modules"
-	set_inc_src "flexApp" "web/flexApp/include" "web/flexApp/src" "shared:flexApp" "ffead-framework,ffead-modules"
-	set_inc_src "markers" "web/markers/include" "web/markers/src" "shared:markers" "ffead-framework,ffead-modules"
-	set_inc_src "oauthApp" "web/oauthApp/include" "web/oauthApp/src" "shared:oauthApp" "ffead-framework,ffead-modules"
-	set_inc_src "peer-server" "web/peer-server/include" "web/peer-server/src" "shared:peer-server" "ffead-framework,ffead-modules"
-	set_inc_src "te-benchmark" "web/te-benchmark/include" "web/te-benchmark/src" "shared:te-benchmark" "ffead-framework,ffead-modules"
-	set_inc_src "t1" "web/t1/include" "web/t1/src" "shared:t1" "ffead-framework,ffead-modules"
+	set_inc_src "web/default/include" "web/default/src" "shared:default" "ffead-framework,ffead-modules"
+	set_inc_src "web/flexApp/include" "web/flexApp/src" "shared:flexApp" "ffead-framework,ffead-modules"
+	set_inc_src "web/markers/include" "web/markers/src" "shared:markers" "ffead-framework,ffead-modules"
+	set_inc_src "web/oauthApp/include" "web/oauthApp/src" "shared:oauthApp" "ffead-framework,ffead-modules"
+	set_inc_src "web/peer-server/include" "web/peer-server/src" "shared:peer-server" "ffead-framework,ffead-modules"
+	set_inc_src "web/te-benchmark/include" "web/te-benchmark/src" "shared:te-benchmark" "ffead-framework,ffead-modules"
+	set_inc_src "web/t1/include" "web/t1/src" "shared:t1" "ffead-framework,ffead-modules"
 	if is_config "MOD_SDORM_MONGO"; then
 		apps_to_build+=",t2"
-		set_inc_src "t2" "web/t2/include" "web/t2/src" "shared:t2" "ffead-framework,ffead-modules"
+		set_inc_src "web/t2/include" "web/t2/src" "shared:t2" "ffead-framework,ffead-modules"
 	fi
 	if is_config "MOD_SDORM_SQL"; then
 		apps_to_build+=",t3,t4,t5"
-		set_inc_src "t3" "web/t3/include" "web/t3/src" "shared:t3" "ffead-framework,ffead-modules"
-		set_inc_src "t4" "web/t4/include" "web/t4/src" "shared:t4" "ffead-framework,ffead-modules"
-		set_inc_src "t5" "web/t5/include" "web/t5/src" "shared:t5" "ffead-framework,ffead-modules"
+		set_inc_src "web/t3/include" "web/t3/src" "shared:t3" "ffead-framework,ffead-modules"
+		set_inc_src "web/t4/include" "web/t4/src" "shared:t4" "ffead-framework,ffead-modules"
+		set_inc_src "web/t5/include" "web/t5/src" "shared:t5" "ffead-framework,ffead-modules"
 	fi
 	templatize "rtdcf/inter-shellb.bazel.buck2.sh.tem" "rtdcf/inter-shellb.sh" "CPPFLAGS,LFLAGS,LIBS,BUILD_SYS"
 	do_postbuild "$apps_to_build"

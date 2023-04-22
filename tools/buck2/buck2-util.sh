@@ -245,8 +245,8 @@ function do_buck2_build() {
 
 function do_buck2_pre_build() {
 	rm -rf prelude
+	wget https://github.com/facebook/buck2-prelude/archive/refs/heads/main.zip && unzip main.zip && mv buck2-prelude-main prelude
 	buck2 clean
-	buck2 init --git
 	echo "" > "$DIR/.buckconfig"
 	echo "" > "$DIR/BUCK"
 }

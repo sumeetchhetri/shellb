@@ -144,13 +144,7 @@ function set_install() {
 # Build the provided source files and generate requested artifacts
 function set_src_files() {
 	if [ "$SB_OUTDIR" = "" ]; then echo "Please set output directory first..." && exit 1; fi
-	if [ "$BUILD_SYS" = "bazel" ]; then
-		BZL_SRC_NAME="$1"
-		shift
-	elif [ "$BUILD_SYS" = "buck2" ]; then
-		BCK2_SRC_NAME="$1"
-		shift
-	fi
+	
 	srces_="$1"
 	src_out_="$2"
 	src_deps_="$3"
@@ -161,13 +155,6 @@ function set_src_files() {
 
 # Build the provided source directories and generate requested artifacts
 function set_src() {
-	if [ "$BUILD_SYS" = "bazel" ]; then
-		BZL_SRC_NAME="$1"
-		shift
-	elif [ "$BUILD_SYS" = "buck2" ]; then
-		BCK2_SRC_NAME="$1"
-		shift
-	fi
 	if [[ "$(type -t do_start)" == 'function' ]]; then
 		do_set_src "$@"
 	fi

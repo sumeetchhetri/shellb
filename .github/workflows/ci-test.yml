@@ -16,7 +16,7 @@ jobs:
       run: |
         chmod +x install.sh && ./install.sh c_cpp && chmod +x build/shellb && mv build/shellb /usr/local/bin/
         git clone https://github.com/sumeetchhetri/ffead-cpp
-        cp examples/ffead-cpp.sh examples/ffead-cpp-bazel.sh examples/ffead-cpp-buck2.sh ffead-cpp/
+        cp examples/ffead-cpp/ffead-cpp.sh examples/ffead-cpp/ffead-cpp-bazel.sh examples/ffead-cpp/ffead-cpp-buck2.sh ffead-cpp/
         cd ffead-cpp
         shellb ffead-cpp
     - uses: actions/checkout@v2

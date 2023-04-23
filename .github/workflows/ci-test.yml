@@ -35,9 +35,18 @@ jobs:
     - name: Test shellb
       run: |
         cd ffead-cpp && ./shellb ffead-cpp
+        ls -ltr shellb_out
+        ls -ltr shellb_out/ffead-cpp-6.0-bin
+        rm -rf shellb_out
     - name: Test shellb-bazel
       run: |
         cd ffead-cpp && ./shellb ffead-cpp-bazel
+        ls -ltr shellb_out
+        ls -ltr shellb_out/ffead-cpp-6.0-bin
+        rm -rf shellb_out
     - name: Test shellb-buck2
       run: |
         cd ffead-cpp && ./shellb ffead-cpp-buck2
+        ls -ltr shellb_out
+        ls -ltr shellb_out/ffead-cpp-6.0-bin
+        rm -rf shellb_out

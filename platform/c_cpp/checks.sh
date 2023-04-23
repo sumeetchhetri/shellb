@@ -233,7 +233,7 @@ function c_init() {
 }
 
 function c_finalize() {
-	if [ "$COUNT" -eq 0 ]
+	if [ ! -z "$COUNT" ] && [ $COUNT -eq 0 ]
 	then
 		for i in ${define_//,/ }
 		do

@@ -57,7 +57,7 @@ function b_test() {
 		COUNT=$(${MY_CPP} -o ${out_}.inter ${out_}.o $libs_ ${lib_} 2>&1|grep "error"|wc -l) 
 	fi
 
-	if [ "$COUNT" -eq 0 ]; then
+	if [ ! -z "$COUNT" ] && [ $COUNT -eq 0 ]; then
 		if [[ $INCS != *"$incs_"* ]]; then 
 			INCS=$incs_
 			INCSQ=$incsq_
@@ -110,7 +110,7 @@ function _b_compile_single() {
 		return
 	fi
 	tincs="$2"
-	if [ "$IS_RUN" -eq 0 ]; then
+	if [ ! -z "$IS_RUN" ] && [ "$IS_RUN" -eq 0 ]; then
 		echo "Got kill signal...shutting down...";
 		exit 1
 	fi
@@ -257,7 +257,7 @@ function b_compile() {
 	elif [ "$4" != "" ]; then
 		for idir in ${4//,/ }
 		do
-			if [ "$IS_RUN" -eq 0 ]; then echo "got kill signal...shutting down..."; wait; exit 1; fi
+			if [ ! -z "$IS_RUN" ] && [ "$IS_RUN" -eq 0 ]; then echo "got kill signal...shutting down..."; wait; exit 1; fi
 			if [[ ${EXC_SRC} == *";$idir;"* ]]; then
 				continue
 			fi
@@ -274,7 +274,7 @@ function b_compile() {
 	if [ "$includes" != "" ]; then
 		while IFS= read -r idir
 		do
-			if [ "$IS_RUN" -eq 0 ]; then echo "got kill signal...shutting down..."; wait; exit 1; fi
+			if [ ! -z "$IS_RUN" ] && [ "$IS_RUN" -eq 0 ]; then echo "got kill signal...shutting down..."; wait; exit 1; fi
 			if [[ ${EXC_SRC} == *";$idir;"* ]]; then
 				continue
 			fi
@@ -307,7 +307,7 @@ function b_compile() {
 			fi
 		done
 	fi
-	if [ "$count" -gt 0 ]; then
+	if [ ! -z "$count" ] && [ "$count" -gt 0 ]; then
 		wait_bexe
 	fi
 	#if [ "$BUILD_SYS" = "bazel" ]; then
@@ -384,7 +384,7 @@ function do_set_src() {
 		done
 	fi
 
-	if [ "$IS_RUN" -eq 0 ]; then echo "Got kill signal...shutting down shellb..."; exit 1; fi
+	if [ ! -z "$IS_RUN" ] && [ "$IS_RUN" -eq 0 ]; then echo "Got kill signal...shutting down shellb..."; exit 1; fi
 	do_build "$src_" "$src_out_" "$src_deps_" "$src_incs_" "$src_files_"
 }
 

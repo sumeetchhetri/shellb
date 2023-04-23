@@ -492,7 +492,7 @@ function start() {
 				if [[ $PARAMS != *";${!i};"* ]]; then PARAMS+=";${!i};"; fi
 			done
 
-			rm -rf .shellb
+			rm -rf .shellb || true
 			mkdir .shellb
 
 			touch $configs_log_file
@@ -520,7 +520,7 @@ function start() {
 				do_install
 			fi
 
-			rm -rf .shellb
+			#rm -rf .shellb
 			completeprogress "Finishing..."
 		fi
 	fi

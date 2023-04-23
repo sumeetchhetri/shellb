@@ -15,6 +15,7 @@ jobs:
     - name: Install shellb
       run: |
         chmod +x install.sh && ./install.sh c_cpp && chmod +x build/shellb
+        cp examples/ffead-cpp/install_ffead-cpp-dependencies.sh .
         chmod +x install_ffead-cpp-dependencies.sh && ./install_ffead-cpp-dependencies.sh
     - name: Install bazel
       run: |

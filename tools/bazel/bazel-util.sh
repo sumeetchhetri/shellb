@@ -179,9 +179,9 @@ function bzl_gen_build_file() {
 		printf "$bzl_ws_new_ext_repo_build_\n" > /tmp/.bzl_ws_new_ext_repo_build_
 		templatize "/tmp/.bzl_ws_new_ext_repo_build_" /tmp/.bzl_ws_new_ext_repo_build__ "BZL_SRC_NAME_R,BZL_REPO_PATH,BZL_REPO_BUILD_FILE,count"
 		cat /tmp/.bzl_ws_new_ext_repo_build__ >> "$DIR/WORKSPACE.bazel"
-		#BZL_REPO_HDRS="glob([\"**/*.h\"]) + glob([\"**/*.hh\"]) + glob([\"**/*.hpp\"])"
-		#printf "$bzl_ws_local_repodef_build_\n" > /tmp/.bzl_ws_local_repo_build_
-		#templatize "/tmp/.bzl_ws_local_repo_build_" "$DIR/$BZL_REPO_BUILD_FILE" "BZL_SRC_NAME_R,BZL_REPO_HDRS,count"
+		BZL_REPO_HDRS="glob([\"**/*.h\"]) + glob([\"**/*.hh\"]) + glob([\"**/*.hpp\"])"
+		printf "$bzl_ws_local_repodef_build_\n" > /tmp/.bzl_ws_local_repo_build_
+		templatize "/tmp/.bzl_ws_local_repo_build_" "$DIR/$BZL_REPO_BUILD_FILE" "BZL_SRC_NAME_R,BZL_REPO_HDRS,count"
 		count=$((count+1))
 	done
 

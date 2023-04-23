@@ -380,7 +380,7 @@ function stop() {
 }
 
 # Perform certain platform specific actions based on platform/build tool
-function do_postbuild() {
+function trigger_build() {
 	if [ "$BUILD_SYS" = "bazel" ]; then
 		do_bazel_build "$@"
 	elif [ "$BUILD_SYS" = "buck2" ]; then
@@ -505,9 +505,7 @@ function start() {
 			fi
 			touch "$DEFS_FILE"
 
-			if [ "$BUILD_SYS" = "bazel" ]; then
-				do_prebuild
-			elif [ "$BUILD_SYS" = "buck2" ]; then
+			if [ "$BUILD_SYS" = "bazel" ] || [ "$BUILD_SYS" = "buck2" ]; then
 				do_prebuild
 			fi
 

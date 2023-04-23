@@ -1,8 +1,7 @@
 #!/bin/bash
 
-sudo apt update -yqq && apt install --no-install-recommends -yqq autoconf-archive unzip uuid-dev odbc-postgresql unixodbc unixodbc-dev \
-	memcached libmemcached-dev libssl-dev \
-	zlib1g-dev cmake make clang-format ninja-build libcurl4-openssl-dev git libpq-dev \
+sudo apt update -yqq && sudo apt install --no-install-recommends -yqq autoconf-archive unzip uuid-dev odbc-postgresql unixodbc unixodbc-dev \
+	memcached libmemcached-dev libssl-dev zlib1g-dev cmake make clang-format ninja-build libcurl4-openssl-dev git libpq-dev \
 	wget build-essential pkg-config libpcre3-dev curl libgtk2.0-dev libgdk-pixbuf2.0-dev bison flex libreadline-dev
 sudo apt-get install --reinstall ca-certificates
 
@@ -63,6 +62,6 @@ rm -f 1.3.5.tar.gz
 cd redis-plus-plus-1.3.5/
 mkdir build
 cd build
-cmake -DREDIS_PLUS_PLUS_CXX_STANDARD=17 .. && sudo make && make install
+cmake -DREDIS_PLUS_PLUS_CXX_STANDARD=17 .. && make && sudo make install
 cd $IROOT
 rm -rf redis-plus-plus-1.3.5

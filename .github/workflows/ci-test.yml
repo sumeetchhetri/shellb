@@ -15,6 +15,7 @@ jobs:
     - name: Install shellb
       run: |
         chmod +x install.sh && ./install.sh c_cpp && chmod +x build/shellb
+        chmod +x install_ffead-cpp-dependencies.sh && ./install_ffead-cpp-dependencies.sh
     - name: Install bazel
       run: |
         sudo apt install pkg-config zip g++ zlib1g-dev unzip wget zstd

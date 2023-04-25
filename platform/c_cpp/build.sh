@@ -206,16 +206,28 @@ function b_prepare_sources() {
 
 	srces_=
 	files=
+	ex1_=
 	if [ "$sources" = "" ]; then
-		for ex_ in ${ext//,/ }
-		do
-			if [ "$ex_" != "" ]; then
-				srces_+=$(find ${src_} -type f -name "$ex_" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
-				srces_+=$'\n'
-				files+=$(find ${src_} -type f -name "$ex_")
-				files+=$'\n'
-			fi
-		done
+		if [ "$ext" = "cpp" ]; then
+			srces_+=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.cpp' \) -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+			srces_+=$'\n'
+			files+=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.cpp' \))
+			files+=$'\n'
+		else
+			srces_+=$(find ${src_} -type f \( -name '*.h' -o -name '*.c' \) -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+			srces_+=$'\n'
+			files+=$(find ${src_} -type f \( -name '*.h' -o -name '*.c' \))
+			files+=$'\n'
+		fi
+		#for ex1_ in ${ext//,/ }
+		#do
+		#	if [ "$ex1_" != "" ]; then
+		#		srces_+=$(find ${src_} -type f -name "$ex1_" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+		#		srces_+=$'\n'
+		#		files+=$(find ${src_} -type f -name "$ex1_")
+		#		files+=$'\n'
+		#	fi
+		#done
 	else
 		sources_=(${sources//,/ })
 		srces_=$(find ${sources_} -type f -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
@@ -224,15 +236,27 @@ function b_prepare_sources() {
 	if [ "$BUILD_SYS" = "bazel" ] || [ "$BUILD_SYS" = "buck2" ]; then
 		for idir in ${4//,/ }
 		do
-			for ex_ in ${ext//,/ }
-			do
-				if [ "$ex_" != "" ]; then
-					srces_+=$(find ${idir} -type f -name "$ex_" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
-					srces_+=$'\n'
-					files+=$(find ${idir} -type f -name "$ex_")
-					files+=$'\n'
-				fi
-			done
+			if [ "$ext" = "cpp" ]; then
+				srces_+=$(find ${idir} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' \) -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+				srces_+=$'\n'
+				files+=$(find ${idir} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' \))
+				files+=$'\n'
+			else
+				srces_+=$(find ${idir} -type f -name '*.h' -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+				srces_+=$'\n'
+				files+=$(find ${idir} -type f -name '*.h')
+				files+=$'\n'
+			fi
+			#ex2_=
+			#for ex2_ in ${ext//,/ }
+			#do
+			#	if [ "$ex2_" != "" ]; then
+			#		srces_+=$(find ${idir} -type f -name "$ex2_" -print|xargs ls -ltr|awk '{print $9"|"$6$7$8}')
+			#		srces_+=$'\n'
+			#		files+=$(find ${idir} -type f -name "$ex2_")
+			#		files+=$'\n'
+			#	fi
+			#done
 		done
 	fi
 
@@ -253,7 +277,11 @@ function b_compile() {
 		sources_=(${sources//,/ })
 	fi
 	if [ "$4" = "" ] && [ "$src_" != "" ]; then
-		includes=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' \) | sed -r 's|/[^/]+$||' |sort |uniq); 
+		if [ "$ext" = "cpp" ]; then
+			includes=$(find ${src_} -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' \) | sed -r 's|/[^/]+$||' |sort |uniq)
+		else
+			includes=$(find ${src_} -type f -name '*.h' | sed -r 's|/[^/]+$||' |sort |uniq)
+		fi 
 	elif [ "$4" != "" ]; then
 		for idir in ${4//,/ }
 		do
@@ -410,17 +438,17 @@ function b_c_build() {
 		percent_denom=$((percent_denom+5))
 	fi
 
-	ext__="*.c"
+	ext__="c"
 	if [ "$BUILD_SYS" = "bazel" ]; then
 		BZL_SRCES=""
 		BZL_HDRS=""
 		#PINCSQ="$PINCSD"
-		ext__="*.c,*.h,*.hpp,*.hh"
+		#ext__="*.c,*.h,*.hpp,*.hh"
 	elif [ "$BUILD_SYS" = "buck2" ]; then
 		BCK2_SRCES=""
 		BCK2_HDRS=""
 		#PINCSQ="$PINCSD"
-		ext__="*.c,*.h,*.hpp,*.hh"
+		#ext__="*.c,*.h,*.hpp,*.hh"
 	fi
 
 	b_prepare_sources "${MY_CC}" "$1" "$ext__" "$4" "$5" "$2"
@@ -527,17 +555,19 @@ function b_cpp_build() {
 		percent_denom=$((percent_denom+5))
 	fi
 
-	ext__="*.cpp"
+	ext__="cpp"
 	if [ "$BUILD_SYS" = "bazel" ]; then
 		BZL_SRCES=""
 		BZL_HDRS=""
 		#PINCSQ="$PINCSD"
-		ext__="*.cpp,*.h,*.hpp,*.hh,*.cc,*.cxx"
+		#ext__="-name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.cpp'"
+		#ext__="*.cpp,*.h,*.hpp,*.hh,*.cc,*.cxx"
 	elif [ "$BUILD_SYS" = "buck2" ]; then
 		BCK2_SRCES=""
 		BCK2_HDRS=""
 		#PINCSQ="$PINCSD"
-		ext__="*.cpp,*.h,*.hpp,*.hh,*.cc,*.cxx"
+		#ext__="-name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.cpp'"
+		#ext__="*.cpp,*.h,*.hpp,*.hh,*.cc,*.cxx"
 	fi
 
 	b_prepare_sources "${MY_CPP}" "$1" "$ext__" "$4" "$5" "$2"

@@ -155,26 +155,29 @@ BZL_DONE_REPOS=
 function bzl_gen_build_file() {
 	BZL_LINKOPTS="$LPATHSQ$4"
 	BZL_LINKOPTS="${BZL_LINKOPTS%?}"
-	BZL_COPTS="${PINCSQ%?}"
 	BZL_SRCES="${BZL_SRCES%?}"
 	BZL_HDRS="${BZL_HDRS%?}"
 	BZL_DEPS="$3"
 	count=1
-	for ex_ in ${INCSQ//,/ }
+	ex3_=
+	for ex3_ in ${INCSQ//,/ }
 	do
-		if [[ $ex_ != "/"* ]]; then
+		if [[ $ex3_ != "/"* ]] && [[ $ex3_ != "."* ]]; then
+			PINCSQ+="\"-I$ex3_\","
+		fi
+		if [[ $ex3_ != "/"* ]]; then
 			continue
 		fi
-		BZL_SRC_NAME_R=$(sanitize_var1 ${ex_})
+		BZL_SRC_NAME_R=$(sanitize_var1 ${ex3_})
 		if [[ $BZL_SRC_NAME_R = "_"* ]]; then
 			BZL_SRC_NAME_R="${BZL_SRC_NAME_R:1}"
 		fi
 		BZL_DEPS+="\"@${BZL_SRC_NAME_R}-r//:${BZL_SRC_NAME_R}-rd\","
-		if [[ $BZL_DONE_REPOS = *"${ex_} "* ]]; then
+		if [[ $BZL_DONE_REPOS = *"${ex3_} "* ]]; then
 			continue
 		fi
-		BZL_DONE_REPOS+="${ex_} "
-		BZL_REPO_PATH="$ex_"
+		BZL_DONE_REPOS+="${ex3_} "
+		BZL_REPO_PATH="$ex3_"
 		BZL_REPO_BUILD_FILE="BUILD_$count.bazel"
 		printf "$bzl_ws_new_ext_repo_build_\n" > /tmp/.bzl_ws_new_ext_repo_build_
 		templatize "/tmp/.bzl_ws_new_ext_repo_build_" /tmp/.bzl_ws_new_ext_repo_build__ "BZL_SRC_NAME_R,BZL_REPO_PATH,BZL_REPO_BUILD_FILE,count"
@@ -185,6 +188,7 @@ function bzl_gen_build_file() {
 		count=$((count+1))
 	done
 
+	BZL_COPTS="${PINCSQ%?}"
 	BZL_DEPS="${BZL_DEPS%?}"
 	BZL_SRC_PATH="$1"
 	printf "$bzl_ws_local_repo_build_\n" > /tmp/.bzl_ws_local_repo_build_
@@ -231,15 +235,25 @@ function bzl_gen_build_file() {
 		kvset "BN_$(get_key $BZL_SRC_NAME)" "//$src:$BZL_SRC_SO_NAME"
 	fi
 
-	templatize "/tmp/.bzl_bin_build_" "$DIR/$src/BUILD.bazel" "BZL_SRC_NAME,BZL_SRCES,BZL_DEFINES,BZL_LINKOPTS,BZL_COPTS,BZL_DEPS,BZL_HDRS,SHLIB_EXT,BZL_SRC_SO_NAME"
+	if [ ! -d ".bztmp/$src" ]; then
+		mkdir -p ".bztmp/$src"
+	fi
+	templatize "/tmp/.bzl_bin_build_" ".bztmp/$src/.bzl_bin_build_" "BZL_SRC_NAME,BZL_SRCES,BZL_DEFINES,BZL_LINKOPTS,BZL_COPTS,BZL_DEPS,BZL_HDRS,SHLIB_EXT,BZL_SRC_SO_NAME"
+	if [ ! -f ".bztmp/$src/BUILD.bazel" ]; then
+		cat ".bztmp/$src/.bzl_bin_build_" > ".bztmp/$src/BUILD.bazel"
+	else
+		cat ".bztmp/$src/.bzl_bin_build_" >> ".bztmp/$src/BUILD.bazel"
+	fi
+	cp ".bztmp/$src/BUILD.bazel" "$DIR/$src/BUILD.bazel"
 	#cat "$DIR/$1/BUILD.bazel"
 }
 
 function do_bazel_build() {
-	for ex_ in ${1//,/ }
+	ex4_=
+	for ex4_ in ${1//,/ }
 	do
-		if [ "$ex_" != "" ]; then
-			tmp=$(get_key $ex_)
+		if [ "$ex4_" != "" ]; then
+			tmp=$(get_key $ex4_)
 			tmp=$(kvget "BN_$tmp")
 			if [ "$tmp" != "" ]; then
 				ret=`bazel build $tmp`
@@ -252,8 +266,11 @@ function do_bazel_build() {
 			fi
 		fi
 	done
+	rm -rf .bztmp
 }
 
 function do_bazel_pre_build() {
+	rm -rf .bztmp || true
+	mkdir .bztmp
 	echo "" > "$DIR/WORKSPACE.bazel"
 }

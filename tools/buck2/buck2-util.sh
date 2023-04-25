@@ -144,31 +144,33 @@ function bck2_gen_build_file() {
 	BCK2_SRCES="${BCK2_SRCES%?}"
 	BCK2_HDRS="${BCK2_HDRS%?}"
 	BCK2_DEPS="$3"
-	for ex_ in ${CPPFLAGS// / }
+	ex5_=
+	for ex5_ in ${CPPFLAGS// / }
 	do
-		if [[ $BCK2_EX_FLAGS != *"\"$ex_\""* ]]; then
-			BCK2_EX_FLAGS+="\"$ex_\","
+		if [[ $BCK2_EX_FLAGS != *"\"$ex5_\""* ]]; then
+			BCK2_EX_FLAGS+="\"$ex5_\","
 		fi
 	done
-	for ex_ in ${INCSQ//,/ }
+	ex6_=
+	for ex6_ in ${INCSQ//,/ }
 	do
-		if [[ $ex_ = "../"* ]]; then
-			if [[ $BCK2_EX_FLAGS != *"\"-I$ex_\""* ]]; then
-				BCK2_EX_FLAGS+="\"-I$ex_\","
+		if [[ $ex6_ = "../"* ]]; then
+			if [[ $BCK2_EX_FLAGS != *"\"-I$ex6_\""* ]]; then
+				BCK2_EX_FLAGS+="\"-I$ex6_\","
 			fi
 		fi
-		if [[ $ex_ != "/"* ]]; then
+		if [[ $ex6_ != "/"* ]]; then
 			continue
 		fi
-		if [[ $BCK2_DONE_REPOS = *"${ex_} "* ]]; then
+		if [[ $BCK2_DONE_REPOS = *"${ex6_} "* ]]; then
 			continue
 		fi
-		BCK2_DONE_REPOS+="${ex_} "
-		if [[ $ex_ != "/usr/include/"* ]] && [[ $ex_ != "/usr/local/include/"* ]]; then
-			BCK2_EXT_INCS+="$ex_/.*, "
+		BCK2_DONE_REPOS+="${ex6_} "
+		if [[ $ex6_ != "/usr/include/"* ]] && [[ $ex6_ != "/usr/local/include/"* ]]; then
+			BCK2_EXT_INCS+="$ex6_/.*, "
 		fi
-		if [[ $BCK2_EX_FLAGS != *"\"-I$ex_\""* ]]; then
-			BCK2_EX_FLAGS+="\"-I$ex_\","
+		if [[ $BCK2_EX_FLAGS != *"\"-I$ex6_\""* ]]; then
+			BCK2_EX_FLAGS+="\"-I$ex6_\","
 		fi
 	done
 
@@ -230,11 +232,11 @@ function do_buck2_build() {
 	printf "$bck2_bconfig_build_\n" > /tmp/.bck2_bconfig_build_
 	templatize "/tmp/.bck2_bconfig_build_" /tmp/.bck2_bconfig_build___ "BCK2_EXT_INCS,CPPFLAGS"
 	cat /tmp/.bck2_bconfig_build___ >> "$DIR/.buckconfig"
-
-	for ex_ in ${1//,/ }
+	ex7_=
+	for ex7_ in ${1//,/ }
 	do
-		if [ "$ex_" != "" ]; then
-			tmp=$(get_key $ex_)
+		if [ "$ex7_" != "" ]; then
+			tmp=$(get_key $ex7_)
 			tmp=$(kvget "BN_$tmp")
 			if [ "$tmp" != "" ]; then
 				#buck2 build $tmp --show-full-output

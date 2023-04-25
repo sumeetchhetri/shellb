@@ -269,8 +269,12 @@ function install_here() {
 	if [[ "$1" != "." ]]; then
 		kv_validate_key "$1" || {
 			if ! [[ "$1" =~ "^." ]]; then
-				echo "Invalid install subdirectory $1, should be a valid directory name or ."
-				exit 1;
+				if [ -d "$SB_OUTDIR/$SB_INSDIR/$1" ]; then
+					echo "WARNING>> Install path $SB_OUTDIR/$SB_INSDIR/$1 may be outside the project tree, exercise caution...."
+				else
+					echo "Invalid install subdirectory $1, should be a valid directory name or ."
+					exit 1;
+				fi
 			fi
 		}
 		ldir="$SB_OUTDIR/$SB_INSDIR/$1"

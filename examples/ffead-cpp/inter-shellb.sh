@@ -11,7 +11,11 @@ function do_start() {
 	add_lib_path "/usr/local/opt/openssl/lib" "/usr/local/lib"
 	add_inc_path "/usr/local/opt/openssl/include" "/usr/local/include" "/usr/include/libmongoc-1.0"
 	add_inc_path "/usr/include/libbson-1.0" "/usr/local/include/libmongoc-1.0" "/usr/local/include/libbson-1.0"
-	add_lib "@LIBS@"
+	libs_="@LIBS@"
+	for ex_ in ${libs_// / }
+	do
+		add_lib "$ex_"
+	done
 	add_inc_path "../include"
 	add_lib_path "../lib"
 	for wedbdir in ../web/*

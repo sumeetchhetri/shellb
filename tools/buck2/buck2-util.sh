@@ -152,6 +152,11 @@ function bck2_gen_build_file() {
 	done
 	for ex_ in ${INCSQ//,/ }
 	do
+		if [[ $ex_ = "../"* ]]; then
+			if [[ $BCK2_EX_FLAGS != *"\"-I$ex_\""* ]]; then
+				BCK2_EX_FLAGS+="\"-I$ex_\","
+			fi
+		fi
 		if [[ $ex_ != "/"* ]]; then
 			continue
 		fi
@@ -168,7 +173,7 @@ function bck2_gen_build_file() {
 	done
 
 	BCK2_DEPS="${BCK2_DEPS%?}"
-	if [[ $BCK2_EX_FLAGS != *"," ]]; then
+	if [[ $BCK2_EX_FLAGS = *"," ]]; then
 		BCK2_EX_FLAGS="${BCK2_EX_FLAGS%?}"
 	fi
 	BCK2_SRC_PATH="$1"
@@ -244,9 +249,10 @@ function do_buck2_build() {
 }
 
 function do_buck2_pre_build() {
-	rm -rf prelude
+	rm -rf prelude || true
 	wget https://github.com/facebook/buck2-prelude/archive/refs/heads/main.zip && unzip main.zip && mv buck2-prelude-main prelude
 	buck2 clean
+	rm -f main.zip
 	echo "" > "$DIR/.buckconfig"
 	echo "" > "$DIR/BUCK"
 }

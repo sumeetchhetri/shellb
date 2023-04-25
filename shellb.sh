@@ -117,6 +117,7 @@ function set_out() {
 	then
 		mkdir -p $SB_OUTDIR
 	fi
+	SB_INSDIR=".bin"
 	if [ ! -d "$SB_OUTDIR/.bin" ]
 	then
 		mkdir -p $SB_OUTDIR/.bin
@@ -212,7 +213,7 @@ function set_exclude_files() {
 function templatize() {
 	if [ "$1" != "" ] && [ -f "$1" ] && [ "$2" != "" ] && [ "$3" != "" ]
 	then
-		rm -f "$2" | true
+		rm -f "$2" || true
 		cp -f "$1" "$2"
 		if [ "$2" != "" ]; then
 			for tv_ in ${3//,/ }

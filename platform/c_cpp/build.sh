@@ -139,6 +139,10 @@ function _b_compile_single() {
 			BCK2_SRCES+="\"$file\","
 		fi
 		return
+	else
+		if [[ $file == *".h" ]] || [[ $file == *".hh" ]] || [[ $file == *".hpp" ]]; then
+			return
+		fi
 	fi
 
 	count=$((count+1))

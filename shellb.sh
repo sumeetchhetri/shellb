@@ -520,6 +520,7 @@ function start() {
 					err_cnt_=$(cat $cmds_log_file|grep " error: "|wc -l)
 					if [ ! -z "$err_cnt_" ] && [ "$err_cnt_" -ne 0 ]; then
 						echo "Build failed, please check the log file for details .... $cmds_log_file"
+						exit 1
 					fi
 				fi
 			else

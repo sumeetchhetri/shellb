@@ -12,7 +12,7 @@ Why create a new one??
 - some are targeted towards speed
 - etc etc
 
-The only reason for creating shellb was to have a minimal, clean, simple and concise build files, having worked with all the various build tools out there for [ffead-cpp](https://github.com/sumeetchhetri/ffead-cpp), managing the build files and keeping up with so many build files for a single project led to a thought which said the process should be easy and simple for anyone and the resulting build files should be small and self explanatory.<br/>This thought led to the idea of creating a tool which uses shell as the source language, shell is available everywhere and so the deployment would require no extra installation of any dependencies except a single script and the resulting build files would acahive the target of simplicity, conciseness and clarity.
+The only reason for creating shellb was to have a minimal, clean, simple and concise build files, having worked with all the various build tools out there for [ffead-cpp](https://github.com/sumeetchhetri/ffead-cpp), managing the build files and keeping up with so many build files for a single project led to a thought which said the process should be easy and simple for anyone and the resulting build files should be small and self explanatory.<br/>This thought led to the idea of creating a tool which uses bash as the source language, shell is available everywhere and so the deployment would require no extra installation of any dependencies except a single script and the resulting build files would acahive the target of simplicity, conciseness and clarity.
 
 Please understand that the tool does not claim to be fast, better or ready to handle every complex permutation of build deployments possible out there.<br/> But it does live upto its motto of being simple and concise, lets have a look at the table below for a simple/only comparison of build files for the project [ffead-cpp](https://github.com/sumeetchhetri/ffead-cpp)
 
@@ -34,7 +34,7 @@ Installation
 
 Documentation
 ====
-First a build script should be created which is nothing but a simple shell script, the only requirement is that the script should contain the following functions, [example](https://github.com/sumeetchhetri/ffead-cpp/blob/master/ffead-cpp-shellb.sh) <br/>
+First a build script should be created which is nothing but a simple bash script, the only requirement is that the script should contain the following functions, [example](https://github.com/sumeetchhetri/ffead-cpp/blob/master/ffead-cpp-shellb.sh) <br/>
 - do_setup - Setup initial environment, platform (c/c_cpp), build system (emb/bazel/buck2), any configuration headers to be generated etc
 - do_config - Setup build configuration parameters, the function should return a newline separated list of properties (pipe separated values of param name, description and initial value (0,1))
 - do_start - Provide the dependencies lookup, #define generation, compile and build any libraries/binaries
@@ -89,4 +89,12 @@ do_start
 **set_exclude_src** - exclude any source file paths from the list of to be compiled sources<br/>
 **trigger_build** - trigger the builds for all the targets specified for non 'emb' modes, 'bazel|buck'
 **templatize** - templatize/evaluate the shellb template file consisting of any variables to be replaced with tha @VAR@ syntax [example](https://github.com/sumeetchhetri/ffead-cpp/blob/master/rtdcf/inter-shellb.sh.tem)<br/>
+
+
+do_install
+===
 **install_here** - install the said files/directories to the install directory, copy the files relative to the 'set_out' diectory, or either from an absolute path, or with the 'RELATIVE_DIR@*.h,*.so,*.html...' syntax
+
+Provide any install_here commands or any installation related steps in this function
+
+And you have the entire power of shell scripting at your disposal throughout the build file, do try it out!!
